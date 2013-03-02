@@ -131,7 +131,7 @@ public class kmeans {
 	}
 
 	/**
-	 *  @brief  Returns the row array of the table data specified by the given index.
+	 *  @brief  Returns a copy of the row array of the table data specified by the given index.
 	 *  @param  table [in] pointer to the table data
 	 *  @param  i [in] row index
 	 */
@@ -235,7 +235,7 @@ public class kmeans {
 		double[] li = new double[1];
 
 		for (int i = 0; i < nrows; i++) {
-			final double[] xi = GetRowArray(table, i);
+			final double[] xi = table[i];
 
 			ai[0] = a[i];
 			li[0] = l[i];
@@ -453,7 +453,7 @@ public class kmeans {
 				final double m = Math.max(s[a[i]] * 0.5f, l[i]);
 				if (u[i] > m) { // First bound test.
 					// Tighten upper bound.
-					final double[] xi = GetRowArray(table, i);
+					final double[] xi = table[i];
 					u[i] = GetEuclideanDistance(xi, c[a[i]]);
 
 					if (u[i] > m) { // Second bound test.
