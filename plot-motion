@@ -1,0 +1,74 @@
+#!/usr/bin/perl
+
+use POSIX;
+
+sub acos {
+	if ($_[0] * $_[0] > 1) {
+		return 0;
+	}
+
+	return atan2(sqrt(1 - $_[0] * $_[0]), $_[0]);
+}
+
+$pi = 4 * atan2(1, 1);
+$r = 6367 / 1.609344;
+$foot = 180 / $r / 5280 / $pi;
+
+# http://www.movable-type.co.uk/scripts/gis-faq-5.1.html
+# nautical mile definition requires 6367 km radius for the earth
+# exactly 1.609344 miles per kilometer, .621371192 kilometers per mile
+# so r is radius of earth in miles, $foot is one foot in degrees
+
+sub dist {
+	my $lat1 = $_[0] * $pi/180;
+	my $lon1 = $_[1] * $pi/180;
+
+	my $lat2 = $_[2] * $pi/180;
+	my $lon2 = $_[3] * $pi/180;
+
+	my $latd = $lat2 - $lat1;
+	my $lond = ($lon2 - $lon1) * cos(($lat1 + $lat2) / 2);
+
+	my $d = sqrt($latd * $latd + $lond * $lond) * 180 / $pi / $foot;
+	if ($d >= 1000) {
+		$d = acos(sin($lat1) * sin($lat2) + cos($lat1) * cos($lat2) * cos($lon2 - $lon1)) * $r * 5280;
+	}
+
+	return $d;
+}
+
+while (<>) {
+	($user, $date, $time, $where, $rest) = split(/ /);
+	($year, $month, $day) = split(/-/, $date);
+	($hour, $minute, $second) = split(/:/, $time);
+
+	$year -= 1900;
+	$month -= 1;
+
+	($lat, $lon) = split(/,/, $where);
+	next if ($lat == 0 || $lon == 0);
+
+	if ($date ne $odate) {
+		print STDERR "$date\n";
+		$odate = $date;
+	}
+
+	$when = POSIX::mktime($second, $minute, $hour, $day, $month, $year, 0, 0, -1);
+
+	if ($owhen{$user} ne "" && $owhen{$user} != $when) {
+		$sec = $when - $owhen{$user};
+		$dist = dist($olat{$user}, $olon{$user}, $lat, $lon);
+		$speed = ($dist / 5280) / ($sec / 60 / 60);
+
+		print "$owhen{$user} $olat{$user},$olon{$user} to $where $odate{$user} $otime{$user} ";
+		printf("%d ", $sec);
+		printf("%.4f %.4f ", $dist, $speed);
+		print "0 0 0.0000% G$user\n";
+	}
+
+	$owhen{$user} = $when;
+	$olat{$user} = $lat;
+	$olon{$user} = $lon;
+	$odate{$user} = $date;
+	$otime{$user} = $time;
+}

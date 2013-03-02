@@ -1,0 +1,70 @@
+#!/usr/bin/perl
+
+use POSIX;
+
+sub acos {
+	if ($_[0] * $_[0] > 1) {
+		return 0;
+	}
+
+	return atan2(sqrt(1 - $_[0] * $_[0]), $_[0]);
+}
+
+$pi = 4 * atan2(1, 1);
+$r = 6367 / 1.609344;
+$foot = 180 / $r / 5280 / $pi;
+
+# http://www.movable-type.co.uk/scripts/gis-faq-5.1.html
+# nautical mile definition requires 6367 km radius for the earth
+# exactly 1.609344 miles per kilometer, .621371192 kilometers per mile
+# so r is radius of earth in miles, $foot is one foot in degrees
+
+while (<>) {
+	if (/^#/ || /--/) {
+		print;
+		next;
+	}
+
+	chomp;
+
+	($when, $a, $to, $b, $date, $time, $sec, $dist, $speed, $alt1, $alt2, $grade, $source) = split(/ /, $_, 13);
+
+	if ($sec == 0) {
+		print STDERR "FAIL on $sec $_\n";
+		print;
+		next;
+	}
+
+	print "$when $a $to $b ";
+
+	($olat, $olon) = split(/,/, $a);
+	($lat, $lon) = split(/,/, $b);
+
+	$lat1 = $lat * $pi/180;
+	$lat2 = $olat * $pi/180;
+
+	$lon1 = $lon * $pi/180;
+	$lon2 = $olon * $pi/180;
+
+	$rat = cos(($lat2 + $lat1) / 2);
+	$latd = $lat2 - $lat1;
+	$lond = ($lon2 - $lon1) * $rat;
+
+	$dist = sqrt($latd * $latd + $lond * $lond) * 180 / $pi / $foot;
+	if ($dist >= 1000) {
+		$dist = acos(sin($lat1) * sin($lat2) + cos($lat1) * cos($lat2) * cos($lon2 - $lon1)) * $r * 5280;
+	}
+
+	if ($dist != 0) {
+	     $grade = sprintf("%.4f%%", 100 * ($alt2 - $alt1) * 3.2808399 / ($dist));
+	}
+
+	@arr = localtime($when);
+	printf("%04d-%02d-%02d %02d:%02d:%02d ", $arr[5] + 1900, $arr[4] + 1, $arr[3],
+	       $arr[2], $arr[1], $arr[0]);
+
+	$speed = sprintf("%.4f", ($dist / 5280) / ($sec / 60 / 60));
+	$dist = sprintf("%.4f", $dist);
+
+	print "$sec $dist $speed $alt1 $alt2 $grade $source\n";
+}
