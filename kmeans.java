@@ -230,12 +230,16 @@ public class kmeans {
 		final int nrows = table.length;
 		final int ncolumns = table[0].length;
 
+		int[] ai = new int[1];
+		double[] ui = new double[1];
+		double[] li = new double[1];
+
 		for (int i = 0; i < nrows; i++) {
 			final double[] xi = GetRowArray(table, i);
 
-			int[] ai = { a[i] };
-			double[] ui = { u[i] };
-			double[] li = { l[i] };
+			ai[0] = a[i];
+			li[0] = l[i];
+			ui[0] = u[i];
 
 			PointAllCtrs(nclusters, xi, c, ai, ui, li);
 
@@ -440,6 +444,11 @@ public class kmeans {
 			}
 
 			System.err.println("rows");
+
+			int[] ai = new int[1];
+			double[] ui = new double[1];
+			double[] li = new double[1];
+
 			for (int i = 0; i < nrows; i++) {
 				final double m = Math.max(s[a[i]] * 0.5f, l[i]);
 				if (u[i] > m) { // First bound test.
@@ -450,9 +459,9 @@ public class kmeans {
 					if (u[i] > m) { // Second bound test.
 						final int ap = a[i];
 
-						int[] ai = { a[i] };
-						double[] ui = { u[i] };
-						double[] li = { l[i] };
+						ai[0] = a[i];
+						ui[0] = u[i];
+						li[0] = l[i];
 						PointAllCtrs(nclusters, xi, c, ai, ui, li);
 						a[i] = ai[0];
 						u[i] = ui[0];
