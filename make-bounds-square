@@ -1,0 +1,48 @@
+#!/usr/bin/perl
+
+$pi = 4 * atan2(1, 1);
+
+$minlat = 360;
+$minlon = 360;
+
+$maxlat = -360;
+$maxlon = -360;
+
+for ($i = 0; $i <= $#ARGV; $i += 2) {
+	if ($ARGV[$i + 1] < $minlon) {
+		$minlon = $ARGV[$i + 1];
+	}
+	if ($ARGV[$i + 1] > $maxlon) {
+		$maxlon = $ARGV[$i + 1];
+	}
+
+	if ($ARGV[$i] < $minlat) {
+		$minlat = $ARGV[$i];
+	}
+	if ($ARGV[$i] > $maxlat) {
+		$maxlat = $ARGV[$i];
+	}
+
+	$ARGV[$i] =~ s/,//g;
+	$ARGV[$i + 1] =~ s/,//g;
+
+	$pts .= "$ARGV[$i],$ARGV[$i + 1] ";
+}
+
+$rat = cos(($minlat + $maxlat) / 2 * $pi / 180);
+
+$lat = ($minlat + $maxlat) / 2;
+$lon = ($minlon + $maxlon) / 2;
+
+$latd = abs($maxlat - $minlat) / 2;
+$lond = abs($maxlon - $minlon) * $rat / 2;
+
+if ($latd > $lond) {
+	$d = $latd;
+} else {
+	$d = $lond;
+}
+
+printf("%.6f %.6f %.6f %.6f\n", $lat - $d, $lon - $d / $rat, $lat + $d, $lon + $d / $rat);
+print "$lat $lon\n";
+print "$pts\n";

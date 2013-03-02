@@ -1,0 +1,34 @@
+#!/usr/bin/perl
+
+$foot = .00000274;
+
+$dim = 10;
+
+if ($ARGV[0] eq "-d") {
+	$dim = $ARGV[1];
+	shift @ARGV;
+	shift @ARGV;
+}
+
+open(IN, "<$ARGV[0]");
+$line = <IN>;
+chomp $line;
+($minlat, $minlon, $maxlat, $maxlon) = split(/[, ]/, $line);
+close(IN);
+
+shift @ARGV;
+
+$radius = $dim * $foot * 612 / ($maxlat - $minlat);
+
+while (<>) {
+	($user, $date, $time, $where) = split(/ /);
+	($lat, $lon) = split(/,/, $where);
+
+	next if ($lat < $minlat || $lat > $maxlat);
+	next if ($lon < $minlon || $lon > $maxlon);
+
+	printf("%.6f %.6f %.6f 0 360 arc fill %% $user $date\n",
+		($lon - $minlon) * 612 / ($maxlon - $minlon),
+		($lat - $minlat) * 612 / ($maxlat - $minlat),
+		$radius);
+}

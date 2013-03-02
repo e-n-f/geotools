@@ -1,0 +1,26 @@
+#!/usr/bin/perl
+
+open(IN, "<$ARGV[0]");
+$line = <IN>;
+($minlat, $minlon, $maxlat, $maxlon) = split(/[ ,]/, $line);
+close(IN);
+
+shift @ARGV;
+
+print STDERR "limit: $minlat,$minlon $maxlat,$maxlon\n";
+
+while (<>) {
+	($user, $date, $time, $where, $url, $title) = split(/ /);
+	($lat, $lon) = split(/,/, $where);
+
+	if ($date ne $odate) {
+		print STDERR "$date\n";
+		$odate = $date;
+	}
+
+	if ($lat >= $minlat && $lat <= $maxlat) {
+		if ($lon >= $minlon && $lon <= $maxlon) {
+			print;
+		}
+	}
+}
