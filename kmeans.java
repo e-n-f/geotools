@@ -265,10 +265,10 @@ public class kmeans {
 	void MoveCenters(final double[][] cp, final int[] q, double[][] c, double[] p) {
 		// Algorithm 4: MOVE-CENTERS(c', q, c, p)
 
+		double[] cs = new double[c[0].length];
+
 		final int nclusters = q.length;
 		for (int j = 0; j < nclusters; j++) {
-			double[] cs = new double[c[j].length];
-
 			for (int i = 0; i < c[j].length; i++) {
 				cs[i] = c[j][i];
 			}
