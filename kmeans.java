@@ -2,6 +2,9 @@
 /**
  *  @file   FastKMeansClustering.cpp
  *  @author Naohisa Sakamoto
+
+https://kvsoceanvis.googlecode.com/svn-history/r271/trunk/pcs/FastKMeansClustering.cpp
+
  */
 /*----------------------------------------------------------------------------
  *
@@ -12,12 +15,89 @@
  *  $Id$
  */
 /*****************************************************************************/
-#include "FastKMeansClustering.h"
-#include <kvs/Value>
+
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.IOException;
+
+public class kmeans {
+
+	public static void main(String[] argv) {
+		byte[] buf = new byte[100000];
+		int used = 0;
+
+		try {
+			InputStream fi;
+
+			if (argv.length == 0) {
+				fi = System.in;
+			} else {
+				fi = new FileInputStream(argv[0]);
+			}
+
+			while (true) {
+				if (buf.length - used < 10000) {
+					byte[] buf2 = new byte[buf.length * 3/2 + 100000];
+					System.arraycopy(buf, 0, buf2, 0, buf.length);
+					buf = buf2;
+				}
+
+				int r = fi.read(buf, used, buf.length - used);
+
+				if (r <= 0) {
+					break;
+				} else {
+					used += r;
+				}
+			}
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+		}
+
+		int lines = 0;
+		for (int i = 0; i < used; i++) {
+			if (buf[i] == '\n') {
+				lines++;
+			}
+		}
+
+		double[][] data = new double[lines][];
+
+		int here = 0;
+		int line = 0;
+		for (int i = 0; i < used; i++) {
+			if (buf[i] == '\n') {
+				String[] fields = new String(buf, here, i - here).split(" ");
+				String[] ao = fields[3].split(",");
+
+				System.out.println(ao[0] + " " + ao[1]);
+
+				double lat = Double.parseDouble(ao[0]);
+				double lon = Double.parseDouble(ao[1]);
+
+				data[line] = new double[2];
+
+				data[line][0] = lat;
+				data[line][1] = lon;
+
+				here = i + 1;
+				line++;
+			}
+		}
+
+		kmeans k = new kmeans(data, 15000);
 
 
-namespace
-{
+		if (false) {
+
+			for (int i = 0; i < data.length; i++) {
+				data[i] = new double[2];
+				data[i][0] = (double) Math.random() * 1000;
+				data[i][1] = (double) Math.random() * 1000;
+				// data[i] = { Math.random() * 1000, Math.random() * 1000 };
+			}
+		}
+	}
 
 /*===========================================================================*/
 /**
@@ -26,15 +106,13 @@ namespace
  *  @param  i [in] row index
  */
 /*===========================================================================*/
-kvs::ValueArray<kvs::Real32> GetRowArray(
-    const kvs::TableObject* table,
-    const size_t i )
+double[] GetRowArray(double[][] table, int i)
 {
-    kvs::ValueArray<kvs::Real32> row( table->ncolumns() );
-    const size_t ncolumns = table->ncolumns();
-    for ( size_t j = 0; j < ncolumns; j++ )
+    double[] row = new double[table[0].length];
+    final int ncolumns = table[0].length;
+    for ( int j = 0; j < ncolumns; j++ )
     {
-	row[j] = table->column(j).to<kvs::Real32>(i);
+	row[j] = table[i][j];
     }
 
     return row;
@@ -48,25 +126,19 @@ kvs::ValueArray<kvs::Real32> GetRowArray(
  *  @return distance
  */
 /*===========================================================================*/
-kvs::Real32 GetEuclideanDistance(
-    const kvs::ValueArray<kvs::Real32>& x0,
-    const kvs::ValueArray<kvs::Real32>& x1 )
+double GetEuclideanDistance(double[] x0, double[] x1)
 {
-    kvs::Real32 distance = 0.0f;
-    const size_t nrows = x0.size();
-    for ( size_t i = 0; i < nrows; i++ )
+    double distance = 0.0f;
+    final int nrows = x0.length;
+    for ( int i = 0; i < nrows; i++ )
     {
-	const kvs::Real32 diff = x1[i] - x0[i];
+	double diff = (x1[i] - x0[i]) * m_rat[i];
 	distance += diff * diff;
     }
 
     return distance;
 }
 
-}
-
-namespace
-{
 
 /*===========================================================================*/
 /**
@@ -80,40 +152,40 @@ namespace
  */
 /*===========================================================================*/
 void PointAllCtrs(
-    const size_t nclusters,
-    const kvs::ValueArray<kvs::Real32>& xi,
-    const kvs::ValueArray<kvs::Real32>* c,
-    kvs::UInt32& ai,
-    kvs::Real32& ui,
-    kvs::Real32& li )
+    final int nclusters,
+    final double[] xi,
+    final double[][] c,
+    int[] ai,
+    double[] ui,
+    double[] li )
 {
     // Algorithm 3: POINT-ALL-CTRS( x(i), c, a(i), u(i), l(i) )
 
-    kvs::UInt32 index = 0;
-    kvs::Real32 dmin = kvs::Value<kvs::Real32>::Max();
-    for ( size_t j = 0; j < nclusters; j++ )
+    int index = 0;
+    double dmin = Float.MAX_VALUE;
+    for ( int j = 0; j < nclusters; j++ )
     {
-	const kvs::Real32 d = ::GetEuclideanDistance( xi, c[j] );
+	final double d = GetEuclideanDistance( xi, c[j] );
 	if ( d < dmin )
 	{
 	    dmin = d;
-	    index = static_cast<kvs::UInt32>(j);
+	    index = j;
 	}
     }
-    ai = index;
+    ai[0] = index;
 
-    ui = ::GetEuclideanDistance( xi, c[ai] );
+    ui[0] = GetEuclideanDistance( xi, c[ai[0]] );
 
-    dmin = kvs::Value<kvs::Real32>::Max();
-    for ( size_t j = 0; j < nclusters; j++ )
+    dmin = Float.MAX_VALUE;
+    for ( int j = 0; j < nclusters; j++ )
     {
-	if ( j != ai )
+	if ( j != ai[0] )
 	{
-	    const kvs::Real32 d = ::GetEuclideanDistance( xi, c[j] );
-	    dmin = kvs::Math::Min( dmin, d );
+	    final double d = GetEuclideanDistance( xi, c[j] );
+	    dmin = Math.min( dmin, d );
 	}
     }
-    li = dmin;
+    li[0] = dmin;
 }
 
 /*===========================================================================*/
@@ -130,31 +202,44 @@ void PointAllCtrs(
  */
 /*===========================================================================*/
 void Initialize(
-    const size_t nclusters,
-    const kvs::TableObject* table,
-    const kvs::ValueArray<kvs::Real32>* c,
-    kvs::ValueArray<kvs::UInt32>& q,
-    kvs::ValueArray<kvs::Real32>* cp,
-    kvs::ValueArray<kvs::Real32>& u,
-    kvs::ValueArray<kvs::Real32>& l,
-    kvs::ValueArray<kvs::UInt32>& a )
+    final int nclusters,
+    final double[][] table,
+    final double[][] c,
+    int[] q,
+    double[][] cp,
+    double[] u,
+    double[] l,
+    int[] a)
 {
     // Algorithm 2: INITIALIZE( c, x, q, c', u, l, a )
 
-    for ( size_t j = 0; j < nclusters; j++ )
+    for ( int j = 0; j < nclusters; j++ )
     {
 	q[j] = 0;
-	cp[j].fill( 0x00 );
+
+	for (int i = 0; i < cp[j].length; i++) {
+		cp[j][i] = 0;
+	}
     }
 
-    const size_t nrows = table->nrows();
-    const size_t ncolumns = table->ncolumns();
-    for ( size_t i = 0; i < nrows; i++ )
+    final int nrows = table.length;
+    final int ncolumns = table[0].length;
+    for ( int i = 0; i < nrows; i++ )
     {
-	const kvs::ValueArray<kvs::Real32> xi = ::GetRowArray( table, i );
-	PointAllCtrs( nclusters, xi, c, a[i], u[i], l[i] );
+	final double[] xi = GetRowArray( table, i );
+
+	int[] ai = { a[i] };
+	double[] ui = { u[i] };
+	double[] li = { l[i] };
+
+	PointAllCtrs( nclusters, xi, c, ai, ui, li);
+
+	a[i] = ai[0];
+	u[i] = ui[0];
+	l[i] = li[0];
+
 	q[a[i]] += 1;
-	for ( size_t k = 0; k < ncolumns; k++ )
+	for ( int k = 0; k < ncolumns; k++ )
 	{
 	    cp[a[i]][k] += xi[k];
 	}
@@ -171,26 +256,28 @@ void Initialize(
  */
 /*===========================================================================*/
 void MoveCenters(
-    const kvs::ValueArray<kvs::Real32>* cp,
-    const kvs::ValueArray<kvs::UInt32>& q,
-    kvs::ValueArray<kvs::Real32>* c,
-    kvs::ValueArray<kvs::Real32>& p )
+    final double[][] cp,
+    final int[] q,
+    double[][] c,
+    double[] p)
 {
     // Algorithm 4: MOVE-CENTERS( c', q, c, p )
 
-    const size_t nclusters = q.size();
-    for ( size_t j = 0; j < nclusters; j++ )
+    final int nclusters = q.length;
+    for ( int j = 0; j < nclusters; j++ )
     {
-	kvs::ValueArray<kvs::Real32> cs;
-	cs.deepCopy( c[j] );
+	double[] cs = new double[c[j].length];
+	for (int i = 0; i < c[j].length; i++) {
+		cs[i] = c[j][i];
+	}
 
-	const size_t nrows = cp[j].size();
-	const kvs::Real32 qj = static_cast<kvs::Real32>( q[j] );
-	for ( size_t k = 0; k < nrows; k++ )
+	final int nrows = cp[j].length;
+	final double qj =  q[j];
+	for ( int k = 0; k < nrows; k++ )
 	{
 	    c[j][k] = cp[j][k] / qj;
 	}
-	p[j] = ::GetEuclideanDistance( cs, c[j] );
+	p[j] = GetEuclideanDistance( cs, c[j] );
     }
 }
 
@@ -204,19 +291,19 @@ void MoveCenters(
  */
 /*===========================================================================*/
 void UpdateBounds(
-    const kvs::ValueArray<kvs::Real32>& p,
-    const kvs::ValueArray<kvs::UInt32>& a,
-    kvs::ValueArray<kvs::Real32>& u,
-    kvs::ValueArray<kvs::Real32>& l )
+    double[] p,
+    int[] a,
+    double[] u,
+    double[] l)
 {
     // Algorithm 5: UPDATE-BOUNDS( p, a, u, l )
 
-    kvs::Real32 r = 0.0f;
-    kvs::Real32 rp = 0.0f;
+    int r = 0;
+    int rp = 0;
 
-    kvs::Real32 pmax = kvs::Value<kvs::Real32>::Min();
-    const size_t nclusters = p.size();
-    for ( size_t j = 0; j < nclusters; j++ )
+    double pmax = Float.MIN_VALUE;
+    final int nclusters = p.length;
+    for ( int j = 0; j < nclusters; j++ )
     {
 	if ( p[j] > pmax )
 	{
@@ -225,8 +312,8 @@ void UpdateBounds(
 	}
     }
 
-    pmax = kvs::Value<kvs::Real32>::Min();
-    for ( size_t j = 0; j < nclusters; j++ )
+    pmax = Float.MIN_VALUE;
+    for ( int j = 0; j < nclusters; j++ )
     {
 	if ( j != r )
 	{
@@ -238,11 +325,16 @@ void UpdateBounds(
 	}
     }
 
-    const size_t nrows = u.size();
-    for ( size_t i = 0; i < nrows; i++ )
+    final int nrows = u.length;
+    for ( int i = 0; i < nrows; i++ )
     {
 	u[i] += p[a[i]];
-	l[i] -= ( r == a[i] ) ? p[rp] : p[r];
+
+	if (r == a[i]) {
+		l[i] -= p[rp];
+	} else {
+		l[i] -= p[r];
+	}
     }
 }
 
@@ -255,13 +347,13 @@ void UpdateBounds(
  */
 /*===========================================================================*/
 void Update(
-    const size_t m,
-    const kvs::ValueArray<kvs::UInt32>& a,
-    kvs::ValueArray<kvs::UInt32>& q )
+    final int m,
+    final int[] a,
+    int[] q)
 {
-    size_t counter = 0;
-    const size_t nrows = a.size();
-    for ( size_t i = 0; i < nrows; i++ )
+    int counter = 0;
+    final int nrows = a.length;
+    for ( int i = 0; i < nrows; i++ )
     {
 	if ( a[i] == m ) counter++;
     }
@@ -279,44 +371,39 @@ void Update(
  */
 /*===========================================================================*/
 void Update(
-    const size_t m,
-    const kvs::TableObject* table,
-    const kvs::ValueArray<kvs::UInt32>& a,
-    kvs::ValueArray<kvs::Real32>* cp )
+    final int m,
+    final double[][] table,
+    final int[] a,
+    double[][] cp )
 {
-    const size_t nrows = a.size();
-    const size_t ncolumns = table->ncolumns();
+    final int nrows = a.length;
+    final int ncolumns = table[0].length;
 
-    cp[m].fill( 0x00 );
-    for ( size_t i = 0; i < nrows; i++ )
+    for (int i = 0; i < cp[m].length; i++) {
+	cp[m][i] = 0;
+    }
+    for ( int i = 0; i < nrows; i++ )
     {
 	if ( a[i] == m )
 	{
-	    for ( size_t k = 0; k < ncolumns; k++ )
+	    for ( int k = 0; k < ncolumns; k++ )
 	    {
-		cp[m][k] += table->column(k).to<kvs::Real32>(i);
+		cp[m][k] += table[i][k];
 	    }
 	}
     }
 }
 
-}
-
-
-namespace pcs
-{
-
 /*===========================================================================*/
 /**
  *  @brief  Constructs a new FastKMeansClustering class.
  */
 /*===========================================================================*/
-FastKMeansClustering::FastKMeansClustering():
-    m_nclusters( 10 ),
-    m_max_iterations( 100 ),
-    m_tolerance( 1.e-6 )
-{
-}
+
+    public int m_nclusters = 10;
+    public int m_max_iterations = 100;
+    public double m_tolerance = (double) 1.e-6;
+    public double[] m_rat = new double[] { 1, .8 };
 
 /*===========================================================================*/
 /**
@@ -325,29 +412,11 @@ FastKMeansClustering::FastKMeansClustering():
  *  @param  nclusters [in] number of clusters
  */
 /*===========================================================================*/
-FastKMeansClustering::FastKMeansClustering( const kvs::ObjectBase* object, const size_t nclusters ):
-    m_nclusters( nclusters ),
-    m_max_iterations( 100 ),
-    m_tolerance( 1.e-6 )
-{
-    this->exec( object );
-}
+public kmeans( double[][] object, final int nclusters ) {
+    m_nclusters = nclusters;
+    m_tolerance = (double) 1.e-6;
 
-/*===========================================================================*/
-/**
- *  @brief  Constructs a new FastKMeansClustering class.
- *  @param  object [in] pointer to the table object
- *  @param  nclusters [in] number of clusters
- *  @param  max_iterations [in] maximum number of iterations
- *  @param  tolerance [in] tolerance for the convergence test
- */
-/*===========================================================================*/
-FastKMeansClustering::FastKMeansClustering( const kvs::ObjectBase* object, const size_t nclusters, const size_t max_iterations, const double tolerance ):
-    m_nclusters( nclusters ),
-    m_max_iterations( max_iterations ),
-    m_tolerance( tolerance )
-{
-    this->exec( object );
+    exec( object );
 }
 
 /*===========================================================================*/
@@ -357,20 +426,13 @@ FastKMeansClustering::FastKMeansClustering( const kvs::ObjectBase* object, const
  *  @return pointer to the clustered table object
  */
 /*===========================================================================*/
-FastKMeansClustering::SuperClass* FastKMeansClustering::exec( const kvs::ObjectBase* object )
+public void exec( final double[][] object )
 {
-    if ( !object )
-    {
-	BaseClass::m_is_success = false;
-	kvsMessageError("Input object is NULL.");
-	return NULL;
-    }
-
     // Input table object.
-    const kvs::TableObject* table = static_cast<const kvs::TableObject*>( object );
-    const size_t nrows = table->nrows();
-    const size_t ncolumns = table->ncolumns();
-    const size_t nclusters = m_nclusters;
+    final double[][] table = object;
+    final int nrows = table.length;
+    final int ncolumns = table[0].length;
+    final int nclusters = m_nclusters;
 
     // Parameters that relate to cluster centers.
     /*   c:  cluster center
@@ -379,16 +441,16 @@ FastKMeansClustering::SuperClass* FastKMeansClustering::exec( const kvs::ObjectB
      *   p:  distance that c last moved
      *   s:  distance from c to its closest other center
      */
-    kvs::ValueArray<kvs::Real32>* c = new kvs::ValueArray<kvs::Real32> [ nclusters ];
-    kvs::ValueArray<kvs::Real32>* cp = new kvs::ValueArray<kvs::Real32> [ nclusters ];
-    kvs::ValueArray<kvs::UInt32> q( nclusters );
-    kvs::ValueArray<kvs::Real32> p( nclusters );
-    kvs::ValueArray<kvs::Real32> s( nclusters );
+    double[][] c = new double[ nclusters ][];
+    double[][] cp = new double[ nclusters ][];
+    int[] q = new int[nclusters];
+    double[] p = new double[nclusters];
+    double[] s = new double[nclusters];
 
-    for ( size_t j = 0; j < nclusters; j++ )
+    for ( int j = 0; j < nclusters; j++ )
     {
-	c[j].allocate( ncolumns );
-	cp[j].allocate( ncolumns );
+	c[j] = new double[ncolumns];
+	cp[j] = new double[ncolumns];
     }
 
     // Parameters that relate to data points.
@@ -399,133 +461,102 @@ FastKMeansClustering::SuperClass* FastKMeansClustering::exec( const kvs::ObjectB
      *       its second closest center (the closest center to the data
      *       point that is not c(a))
      */
-    kvs::ValueArray<kvs::UInt32> a( nrows );
-    kvs::ValueArray<kvs::Real32> u( nrows );
-    kvs::ValueArray<kvs::Real32> l( nrows );
+    int[] a = new int[nrows];
+    double[] u = new double[nrows];
+    double[] l = new double[nrows];
 
     // Assign initial centers.
-    for ( size_t j = 0; j < nclusters; j++ )
+    for ( int j = 0; j < nclusters; j++ )
     {
-	const kvs::UInt32 index = nrows * m_random.rand();
-	c[j] = ::GetRowArray( table, index );
+	final int index = j; // (int) (Math.random() * nrows);
+	c[j] = GetRowArray( table, index );
     }
 
     // Initialize.
-    ::Initialize( nclusters, table, c, q, cp, u, l, a );
+    Initialize( nclusters, table, c, q, cp, u, l, a );
 
     // Cluster IDs.
-    kvs::ValueArray<kvs::UInt32> IDs;
+    int[] IDs;
 
     // Clustering.
-    bool converged = false;
-    size_t counter = 0;
+    boolean converged = false;
+    int counter = 0;
     while ( !converged )
     {
+	System.err.println("Update s");
 	// Update s.
-	for ( size_t j = 0; j < nclusters; j++ )
+	for ( int j = 0; j < nclusters; j++ )
 	{
-	    kvs::Real32 dmin = kvs::Value<kvs::Real32>::Max();
-	    for ( size_t jp = 0; jp < nclusters; jp++ )
+	    double dmin = Float.MAX_VALUE;
+	    for ( int jp = 0; jp < nclusters; jp++ )
 	    {
 		if ( jp != j )
 		{
-		    const kvs::Real32 d = ::GetEuclideanDistance( c[jp], c[j] );
-		    dmin = kvs::Math::Min( dmin, d );
+		    final double d = GetEuclideanDistance( c[jp], c[j] );
+		    dmin = Math.min( dmin, d );
 		}
 	    }
 	    s[j] = dmin;
 	}
 
-	for ( size_t i = 0; i < nrows; i++ )
+	System.err.println("rows");
+	for ( int i = 0; i < nrows; i++ )
 	{
-	    const kvs::Real32 m = kvs::Math::Max( s[a[i]] * 0.5f, l[i] );
+	    final double m = Math.max( s[a[i]] * 0.5f, l[i] );
 	    if ( u[i] > m ) // First bound test.
 	    {
 		// Tighten upper bound.
-		const kvs::ValueArray<kvs::Real32> xi = ::GetRowArray( table, i );
-		u[i] = ::GetEuclideanDistance( xi, c[a[i]] );
+		final double[] xi = GetRowArray( table, i );
+		u[i] = GetEuclideanDistance( xi, c[a[i]] );
 		if ( u[i] > m ) // Second bound test.
 		{
-		    const kvs::UInt32 ap = a[i];
-		    ::PointAllCtrs( nclusters, xi, c, a[i], u[i], l[i] );
+		    final int ap = a[i];
+
+		    int[] ai = { a[i] };
+		    double[] ui = { u[i] };
+		    double[] li = { l[i] };
+		    PointAllCtrs( nclusters, xi, c, ai, ui, li);
+		    a[i] = ai[0];
+		    u[i] = ui[0];
+		    l[i] = li[0];
+
 		    if ( ap != a[i] )
 		    {
-			::Update( ap, a, q );
-			::Update( a[i], a, q );
-			::Update( ap, table, a, cp );
-			::Update( a[i], table, a, cp );
+			Update( ap, a, q );
+			Update( a[i], a, q );
+			Update( ap, table, a, cp );
+			Update( a[i], table, a, cp );
 		    }
 		}
 	    }
 	}
 
-	::MoveCenters( cp, q, c, p );
-	::UpdateBounds( p, a, u, l );
+	System.err.println("move centers");
+	MoveCenters( cp, q, c, p );
+	System.err.println("update bounds");
+	UpdateBounds( p, a, u, l );
 
 	// Update cluster IDs.
 	IDs = a;
 
 	// Convergence test.
 	converged = true;
-	for ( size_t j = 0; j < nclusters; j++ )
+	double bad = 0;
+	for ( int j = 0; j < nclusters; j++ )
 	{
-	    if ( !( p[j] < m_tolerance ) ) { converged = false; break; }
+	    if ( !( p[j] < m_tolerance ) ) { bad = p[j]; converged = false; break; }
 	}
 
 	if ( counter++ > m_max_iterations ) break;
+
+	System.err.println("again! " + bad);
     }
 
-    delete [] c;
-    delete [] cp;
-
-    // Set the results to the output table object.
-    for ( size_t i = 0; i < ncolumns; i++ )
-    {
-	const std::string label = table->label(i);
-	const kvs::AnyValueArray& column = table->column(i);
-	SuperClass::addColumn( column, label );
+    for (int i = 0; i < nrows; i++) {
+	System.out.println(1 + " " + table[i][0] + "," + table[i][1] + " to " +
+		c[a[i]][0] + "," + c[a[i]][1] + " 2001-01-01 11:11:11 1 1 1");
     }
-    SuperClass::addColumn( IDs, "Cluster ID" );
-
-    return this;
 }
 
-void FastKMeansClustering::setSeed( const size_t seed )
-{
-    m_random.setSeed( seed );
-}
-
-/*===========================================================================*/
-/**
- *  @brief  Sets a number of clusters.
- *  @param  nclusters [in] number of clusters
- */
-/*===========================================================================*/
-void FastKMeansClustering::setNumberOfClusters( const size_t nclusters )
-{
-    m_nclusters = nclusters;
-}
-
-/*===========================================================================*/
-/**
- *  @brief  Sets a maximum number of interations.
- *  @param  max_iterations [in] maximum number of iterations
- */
-/*===========================================================================*/
-void FastKMeansClustering::setMaxInterations( const size_t max_iterations )
-{
-    m_max_iterations = max_iterations;
-}
-
-/*===========================================================================*/
-/**
- *  @brief  Sets a tolerance for the convergence test.
- *  @param  tolerance [in] tolerance which can be assumed zero
- */
-/*===========================================================================*/
-void FastKMeansClustering::setTolerance( const double tolerance )
-{
-    m_tolerance = tolerance;
-}
 
 } // end of namespace pcs
