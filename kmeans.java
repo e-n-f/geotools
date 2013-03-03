@@ -101,18 +101,18 @@ public class kmeans {
 
 		int here = 0;
 		int line = 0;
+		int nfields = 0;
 		for (int i = 0; i < used; i++) {
 			if (buf[i] == '\n') {
-				String[] fields = new String(buf, here, i - here).split(" ");
-				String[] ao = fields[3].split(",");
+				String[] fields = new String(buf, here, i - here).split("[ ,]");
+				if (nfields == 0) {
+					nfields = fields.length;
+				}
+				data[line] = new double[nfields];
 
-				double lat = Double.parseDouble(ao[0]);
-				double lon = Double.parseDouble(ao[1]);
-
-				data[line] = new double[2];
-
-				data[line][0] = lat;
-				data[line][1] = lon;
+				for (int j = 0; j < nfields; j++) {
+					data[line][j] = Double.parseDouble(fields[j]);
+				}
 
 				here = i + 1;
 				line++;
