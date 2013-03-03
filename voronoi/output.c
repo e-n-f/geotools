@@ -3,13 +3,14 @@
 
 
 #include <stdio.h>
+#include <math.h>
 
 #include "vdefs.h"
 
 extern int triangulate, plot, debug ;
-extern float ymax, ymin, xmax, xmin ;
+extern double ymax, ymin, xmax, xmin ;
 
-float pxmin, pxmax, pymin, pymax, cradius;
+double pxmin, pxmax, pymin, pymax, cradius;
 
 void
 openpl(void)
@@ -18,19 +19,20 @@ openpl(void)
 
 #pragma argsused
 void
-line(float ax, float ay, float bx, float by)
+line(double ax, double ay, double bx, double by)
+    {
+	printf("%.6f %.6f moveto %.6f %.6f lineto stroke\n", ax, ay, bx, by);
+    }
+
+#pragma argsused
+void
+circle(double ax, double ay, double radius)
     {
     }
 
 #pragma argsused
 void
-circle(float ax, float ay, float radius)
-    {
-    }
-
-#pragma argsused
-void
-range(float pxmin, float pxmax, float pymin, float pymax)
+range(double pxmin, double pxmax, double pymin, double pymax)
     {
     }
 
@@ -58,7 +60,22 @@ out_ep(Edge * e)
     {
     if (!triangulate && plot)
         {
+#if 0
+	printf("ep: endpoints: ");
+        printf(" %d ", e->ep[le] != (Site *)NULL ? e->ep[le]->sitenbr : -1) ;
+        printf("%d", e->ep[re] != (Site *)NULL ? e->ep[re]->sitenbr : -1) ;
+	printf("\n");
+	printf("ep: regions: ");
+        printf(" %d ", e->reg[le] != (Site *)NULL ? e->reg[le]->sitenbr : -1) ;
+        printf("%d ", e->reg[re] != (Site *)NULL ? e->reg[re]->sitenbr : -1) ;
+	printf(" region points: ");
+        printf("%f %f %f %f\n", e->reg[0]->coord.x, e->reg[0]->coord.y,
+             e->reg[1]->coord.x, e->reg[1]->coord.y) ;
+#endif
+
+
         clip_line(e) ;
+
         }
     if (!triangulate && !plot)
         {
@@ -103,7 +120,13 @@ out_triple(Site * s1, Site * s2, Site * s3)
     {
     if (triangulate && !plot && !debug)
         {
+#if 0
         printf("%d %d %d\n", s1->sitenbr, s2->sitenbr, s3->sitenbr) ;
+#endif
+        printf("%d %f,%f %d %f,%f %d %f,%f\n",
+		s1->sitenbr, s1->coord.x, s1->coord.y,
+		s2->sitenbr, s2->coord.x, s2->coord.y,
+		s3->sitenbr, s3->coord.x, s3->coord.y) ;
         }
     if (debug)
         {
@@ -115,7 +138,7 @@ out_triple(Site * s1, Site * s2, Site * s3)
 void
 plotinit(void)
     {
-    float dx, dy, d ;
+    double dx, dy, d ;
 
     dy = ymax - ymin ;
     dx = xmax - xmin ;
@@ -133,7 +156,7 @@ void
 clip_line(Edge * e)
     {
     Site * s1, * s2 ;
-    float x1, x2, y1, y2 ;
+    double x1, x2, y1, y2 ;
 
     if (e->a == 1.0 && e->b >= 0.0)
         {
@@ -239,6 +262,37 @@ clip_line(Edge * e)
             x2 = (e->c - y2) / e->a ;
             }
         }
-    line(x1,y1,x2,y2);
+
+    double a, b, c, s, area;
+    Site os1, os2;
+
+    os1.coord.x = x1;
+    os1.coord.y = y1;
+    os2.coord.x = x2;
+    os2.coord.y = y2;
+
+    a = dist(e->reg[0], &os1);
+    b = dist(e->reg[0], &os2);
+    c = dist(&os1, &os2);
+    s = (a + b + c) / 2;
+    area = sqrt(s * (s - a) * (s - b) * (s - c));
+    //printf("%f %f %f -> ", a, b, c);
+
+    printf("%f,%f ", e->reg[0]->coord.x, e->reg[0]->coord.y);
+    printf("%f,%f %f,%f ", x1, y1, x2, y2);
+    printf("%f ", area);
+    printf("%s", e->reg[0]->text);
+
+    a = dist(e->reg[1], &os1);
+    b = dist(e->reg[1], &os2);
+    c = dist(&os1, &os2);
+    s = (a + b + c) / 2;
+    area = sqrt(s * (s - a) * (s - b) * (s - c));
+    //printf("%f %f %f -> ", a, b, c);
+
+    printf("%f,%f ", e->reg[1]->coord.x, e->reg[1]->coord.y);
+    printf("%f,%f %f,%f ", x1, y1, x2, y2);
+    printf("%f ", area);
+    printf("%s", e->reg[1]->text);
     }
 

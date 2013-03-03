@@ -8,7 +8,7 @@ int PQmin, PQcount, PQhashsize ;
 Halfedge * PQhash ;
 
 void
-PQinsert(Halfedge * he, Site * v, float offset)
+PQinsert(Halfedge * he, Site * v, double offset)
     {
     Halfedge * last, * next ;
 

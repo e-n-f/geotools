@@ -1,10 +1,11 @@
 
 /*** GEOMETRY.C ***/
 
+#include <stdio.h>
 #include <math.h>
 #include "vdefs.h"
 
-float deltax, deltay ;
+double deltax, deltay ;
 int nedges, sqrt_nsites, nvertices ;
 Freelist efl ;
 
@@ -21,7 +22,7 @@ geominit(void)
 Edge *
 bisect(Site * s1, Site * s2)
     {
-    float dx, dy, adx, ady ;
+    double dx, dy, adx, ady ;
     Edge * newedge ;
 
     newedge = (Edge *)getfree(&efl) ;
@@ -59,7 +60,7 @@ intersect(Halfedge * el1, Halfedge * el2)
     {
     Edge * e1, * e2, * e ;
     Halfedge * el ;
-    float d, xint, yint ;
+    double d, xint, yint ;
     int right_of_site ;
     Site * v ;
 
@@ -113,7 +114,7 @@ right_of(Halfedge * el, Point * p)
     Edge * e ;
     Site * topsite ;
     int right_of_site, above, fast ;
-    float dxp, dyp, dxs, t1, t2, t3, yl ;
+    double dxp, dyp, dxs, t1, t2, t3, yl ;
 
     e = el->ELedge ;
     topsite = e->reg[1] ;
@@ -187,14 +188,26 @@ endpoint(Edge * e, int lr, Site * s)
     makefree((Freenode *)e, (Freelist *) &efl) ;
     }
 
-float
+double
 dist(Site * s, Site * t)
     {
-    float dx,dy ;
+    double dist;
+    double dx, dy, dz;
+
+    static double scale = 1;
+
+    if (scale == 1) {
+	scale = cos(s->coord.x * M_PI / 180);
+	fprintf(stderr, "scale is %f\n", scale);
+    }
 
     dx = s->coord.x - t->coord.x ;
-    dy = s->coord.y - t->coord.y ;
-    return (sqrt(dx*dx + dy*dy)) ;
+    dy = (s->coord.y - t->coord.y) * scale ;
+    dist = sqrt(dx*dx + dy*dy) ;
+
+    //printf("%f,%f -> %f,%f plane = %f\n", lat1,lon1, lat2,lon2, dist);
+
+    return dist;
     }
 
 void

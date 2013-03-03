@@ -21,8 +21,8 @@ typedef struct tagFreelist
 
 typedef struct tagPoint
     {
-    float x ;
-    float y ;
+    double x ;
+    double y ;
     } Point ;
 
 /* structure used both for sites and for vertices */
@@ -32,12 +32,13 @@ typedef struct tagSite
     Point coord ;
     int sitenbr ;
     int refcnt ;
+    char * text;
     } Site ;
 
 
 typedef struct tagEdge
     {
-    float a, b, c ;
+    double a, b, c ;
     Site * ep[2] ;
     Site * reg[2] ;
     int edgenbr ;
@@ -54,7 +55,7 @@ typedef struct tagHalfedge
     int ELrefcnt ;
     char ELpm ;
     Site * vertex ;
-    float ystar ;
+    double ystar ;
     struct tagHalfedge * PQnext ;
     } Halfedge ;
 
@@ -80,16 +81,16 @@ Edge * bisect(Site *, Site *) ;
 Site * intersect(Halfedge *, Halfedge *) ;
 int right_of(Halfedge *, Point *) ;
 void endpoint(Edge *, int, Site *) ;
-float dist(Site *, Site *) ;
+double dist(Site *, Site *) ;
 void makevertex(Site *) ;
 void deref(Site *) ;
 void ref(Site *) ;
-extern float deltax, deltay ;
+extern double deltax, deltay ;
 extern int nsites, nedges, sqrt_nsites, nvertices ;
 extern Freelist sfl, efl ;
 
 /* heap.c */
-void PQinsert(Halfedge *, Site *, float) ;
+void PQinsert(Halfedge *, Site *, double) ;
 void PQdelete(Halfedge *) ;
 int PQbucket(Halfedge *) ;
 int PQempty(void) ;
@@ -101,7 +102,7 @@ extern Halfedge * PQhash ;
 
 /* main.c */
 extern int sorted, triangulate, plot, debug, nsites, siteidx ;
-extern float xmin, xmax, ymin, ymax ;
+extern double xmin, xmax, ymin, ymax ;
 extern Site * sites ;
 extern Freelist sfl ;
 
@@ -116,9 +117,9 @@ char *myalloc(unsigned) ;
 
 /* output.c */
 void openpl(void) ;
-void line(float, float, float, float) ;
-void circle(float, float, float) ;
-void range(float, float, float, float) ;
+void line(double, double, double, double) ;
+void circle(double, double, double) ;
+void range(double, double, double, double) ;
 void out_bisector(Edge *) ;
 void out_ep(Edge *) ;
 void out_vertex(Site *) ;

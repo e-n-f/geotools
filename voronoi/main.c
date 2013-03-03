@@ -2,14 +2,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>  /* realloc(), qsort() */
+#include <string.h>
+#include <math.h>
 
 #include "vdefs.h"
 
-Site * readone(void), * nextone(void) ;
+Site * nextone(void) ;
 void readsites(void) ;
 
-int sorted, triangulate, plot, debug, nsites, siteidx ;
-float xmin, xmax, ymin, ymax ;
+int triangulate, plot, debug, nsites, siteidx ;
+double xmin, xmax, ymin, ymax ;
 Site * sites ;
 Freelist sfl ;
 
@@ -17,21 +19,19 @@ int
 main(int argc, char *argv[])
     {
     int c ;
-    Site *(*next)() ;
 
-    sorted = triangulate = plot = debug = 0 ;
-    while ((c = getopt(argc, argv, "dpst")) != EOF)
+    triangulate = debug = 0 ;
+    plot = 1;
+    while ((c = getopt(argc, argv, "dpt")) != EOF)
         {
         switch(c)
             {
             case 'd':
                 debug = 1 ;
                 break ;
-            case 's':
-                sorted = 1 ;
-                break ;
             case 't':
                 triangulate = 1 ;
+		plot = 0 ;
                 break ;
             case 'p':
                 plot = 1 ;
@@ -40,23 +40,14 @@ main(int argc, char *argv[])
         }
 
     freeinit(&sfl, sizeof(Site)) ;
-    if (sorted)
-        {
-        scanf("%d %f %f %f %f", &nsites, &xmin, &xmax, &ymin, &ymax) ;
-        next = readone ;
-        }
-    else
-        {
-        readsites() ;
-        next = nextone ;
-        }
+    readsites() ;
     siteidx = 0 ;
     geominit() ;
     if (plot)
         {
         plotinit() ;
         }
-    voronoi(next) ;
+    voronoi(nextone) ;
     return (0) ;
     }
 
@@ -105,18 +96,29 @@ nextone(void)
         }
     }
 
+
 /*** read all sites, sort, and compute xmin, xmax, ymin, ymax ***/
 
 void
 readsites(void)
     {
     int i ;
+    char s[2000];
+    char user[2000], date[2000], time[2000];
 
     nsites = 0 ;
     sites = (Site *) myalloc(4000 * sizeof(Site));
-    while (scanf("%f %f", &sites[nsites].coord.x,
-&sites[nsites].coord.y) !=EOF)
+    while (fgets(s, 2000, stdin))
         {
+	if (sscanf(s, "%s %s %s %lf,%lf", user, date, time, &sites[nsites].coord.x, &sites[nsites].coord.y) != 5)
+	    {
+	    if (sscanf(s, "%lf %lf", &sites[nsites].coord.x, &sites[nsites].coord.y) != 2)
+		{
+		fprintf(stderr, "Don't know what to do with %s", s);
+		continue;
+		}
+	    }
+	sites[nsites].text = strdup(s);
         sites[nsites].sitenbr = nsites ;
         sites[nsites++].refcnt = 0 ;
         if (nsites % 4000 == 0)
@@ -125,6 +127,22 @@ realloc(sites,(nsites+4000)*sizeof(Site));
         }
 
     qsort((void *)sites, nsites, sizeof(Site), scomp) ;
+
+#define SMALL .000001
+
+    int out = 0;
+    for (i = 1; i < nsites; i++) {
+	if (fabs(sites[i].coord.x - sites[i - 1].coord.x) > SMALL ||
+	    fabs(sites[i].coord.y - sites[i - 1].coord.y) > SMALL) {
+		sites[out] = sites[i];
+		out++;
+	} else {
+		fprintf(stderr, "discard dup %f %f of %f %f\n", sites[i].coord.x, sites[i].coord.y,
+								sites[i - 1].coord.x, sites[i - 1].coord.y);
+	}
+    }
+    nsites = out;
+
     xmin = sites[0].coord.x ;
     xmax = sites[0].coord.x ;
     for (i = 1 ; i < nsites ; ++i)
@@ -140,22 +158,5 @@ realloc(sites,(nsites+4000)*sizeof(Site));
         }
     ymin = sites[0].coord.y ;
     ymax = sites[nsites-1].coord.y ;
-    }
-
-/*** read one site ***/
-
-Site *
-readone(void)
-    {
-    Site * s ;
-
-    s = (Site *)getfree(&sfl) ;
-    s->refcnt = 0 ;
-    s->sitenbr = siteidx++ ;
-    if (scanf("%f %f", &(s->coord.x), &(s->coord.y)) == EOF)
-        {
-        return ((Site *)NULL ) ;
-        }
-    return (s) ;
     }
 
