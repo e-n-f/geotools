@@ -52,14 +52,23 @@ public class kmeans {
 	public static void main(String[] argv) {
 		byte[] buf = new byte[100000];
 		int used = 0;
+		int optind = 0;
+		int nclusters = -1;
+
+		while (optind < argv.length) {
+			if (argv[optind].equals("-k")) {
+				nclusters = Integer.parseInt(argv[optind + 1]);
+				optind += 2;
+			}
+		}
 
 		try {
 			InputStream fi;
 
-			if (argv.length == 0) {
+			if (optind >= argv.length) {
 				fi = System.in;
 			} else {
-				fi = new FileInputStream(argv[0]);
+				fi = new FileInputStream(argv[optind]);
 			}
 
 			while (true) {
@@ -110,8 +119,13 @@ public class kmeans {
 			}
 		}
 
+		if (nclusters <= 0) {
+			nclusters = (int) Math.ceil(Math.sqrt(lines / 2));
+			System.err.println("Using " + nclusters + " clusters");
+		}
+
 		kmeans km = new kmeans();
-		Cluster[] clusters = km.findClusters(data, 1000);
+		Cluster[] clusters = km.findClusters(data, nclusters);
 
 		for (int i = 0; i < clusters.length; i++) {
 			for (int j = 0; j < clusters[i].center.length; j++) {
