@@ -47,22 +47,7 @@ import java.io.InputStream;
 import java.io.IOException;
 
 public class kmeans {
-	public int m_nclusters = 10;
-	public int m_max_iterations = 100;
-	public double m_tolerance = (double) 1.e-6;
-	public double[] m_rat = new double[] { 1, .8 };
-
-	/**
-	 *  @brief  Constructs a new FastKMeansClustering class.
-	 *  @param  object [in] pointer to the table object
-	 *  @param  nclusters [in] number of clusters
-	 */
-	public kmeans(double[][] object, final int nclusters) {
-		m_nclusters = nclusters;
-		m_tolerance = (double) 1.e-6;
-
-		exec(object);
-	}
+	public kmeans() { }
 
 	public static void main(String[] argv) {
 		byte[] buf = new byte[100000];
@@ -112,8 +97,6 @@ public class kmeans {
 				String[] fields = new String(buf, here, i - here).split(" ");
 				String[] ao = fields[3].split(",");
 
-				System.out.println(ao[0] + " " + ao[1]);
-
 				double lat = Double.parseDouble(ao[0]);
 				double lon = Double.parseDouble(ao[1]);
 
@@ -127,7 +110,32 @@ public class kmeans {
 			}
 		}
 
-		kmeans k = new kmeans(data, 100);
+		kmeans km = new kmeans();
+		Cluster[] clusters = km.findClusters(data, 1000);
+
+		for (int i = 0; i < clusters.length; i++) {
+			for (int j = 0; j < clusters[i].center.length; j++) {
+				if (j != 0) {
+					System.out.print(",");
+				}
+				System.out.print(clusters[i].center[j]);
+			}
+
+			System.out.print(":");
+
+			for (int j = 0; j < clusters[i].points.length; j++) {
+				System.out.print(" ");
+
+				for (int k = 0; k < clusters[i].points[j].length; k++) {
+					if (k != 0) {
+						System.out.print(",");
+					}
+					System.out.print(clusters[i].points[j][k]);
+				}
+			}
+
+			System.out.print("\n");
+		}
 	}
 
 	/**
@@ -157,7 +165,7 @@ public class kmeans {
 		final int nrows = x0.length;
 
 		for (int i = 0; i < nrows; i++) {
-			double diff = (x1[i] - x0[i]) * m_rat[i];
+			double diff = x1[i] - x0[i];
 			distance += diff * diff;
 		}
 
@@ -371,17 +379,35 @@ public class kmeans {
 		}
 	}
 
+	public static class Cluster {
+		public double[] center;
+		public double[][] points;
+	}
+
 	/**
 	 *  @brief  Executes Hamerly's k-means clustering.
 	 *  @param  object [in] pointer to the table object
 	 *  @return pointer to the clustered table object
 	 */
-	public void exec(final double[][] object) {
+	public Cluster[] findClusters(final double[][] object, int nclusters) {
+		return findClusters(object, nclusters, 100, 1e-6);
+	}
+
+	/**
+	 *  @brief  Executes Hamerly's k-means clustering.
+	 *  @param  object [in] pointer to the table object
+	 *  @return pointer to the clustered table object
+	 */
+	public Cluster[] findClusters(final double[][] object, int nclusters,
+				      int maxIterations, double tolerance) {
 		// Input table object.
 		final double[][] table = object;
 		final int nrows = table.length;
 		final int ncolumns = table[0].length;
-		final int nclusters = m_nclusters;
+
+		if (nclusters > nrows) {
+			nclusters = nrows;
+		}
 
 		// Parameters that relate to cluster centers.
 		/*   c:  cluster center
@@ -430,7 +456,6 @@ public class kmeans {
 		int counter = 0;
 
 		while (!converged) {
-			System.err.println("Update s");
 			// Update s.
 			for (int j = 0; j < nclusters; j++) {
 				double dmin = Float.MAX_VALUE;
@@ -442,8 +467,6 @@ public class kmeans {
 				}
 				s[j] = dmin;
 			}
-
-			System.err.println("rows");
 
 			int[] ai = new int[1];
 			double[] ui = new double[1];
@@ -477,9 +500,7 @@ public class kmeans {
 				}
 			}
 
-			System.err.println("move centers");
 			MoveCenters(cp, q, c, p);
-			System.err.println("update bounds");
 			UpdateBounds(p, a, u, l);
 
 			// Update cluster IDs.
@@ -489,23 +510,39 @@ public class kmeans {
 			converged = true;
 			double bad = 0;
 			for (int j = 0; j < nclusters; j++) {
-				if (!(p[j] < m_tolerance)) {
+				if (!(p[j] < tolerance || Double.isNaN(p[j]))) {
 					bad = p[j];
 					converged = false;
 					break;
 				}
 			}
 
-			if (counter++ > m_max_iterations) {
+			if (counter++ > maxIterations) {
 				break;
 			}
 
-			System.err.println("again! " + bad);
+			System.err.println("Trying again: " + bad);
+		}
+
+		Cluster[] ret = new Cluster[nclusters];
+		int[] count = new int[nclusters];
+
+		for (int i = 0; i < nrows; i++) {
+			count[a[i]]++;
+		}
+
+		for (int i = 0; i < nclusters; i++) {
+			ret[i] = new Cluster();
+			ret[i].center = c[i];
+			ret[i].points = new double[count[i]][];
+			count[i] = 0;
 		}
 
 		for (int i = 0; i < nrows; i++) {
-			System.out.println(1 + " " + table[i][0] + "," + table[i][1] + " to " +
-				c[a[i]][0] + "," + c[a[i]][1] + " 2001-01-01 11:11:11 1 1 1");
+			ret[a[i]].points[count[a[i]]] = table[i];
+			count[a[i]]++;
 		}
+
+		return ret;
 	}
 }
