@@ -161,15 +161,8 @@ double dist(Site * s, Site * t) {
 	double dist;
 	double dx, dy, dz;
 
-	static double scale = 1;
-
-	if (scale == 1) {
-		scale = cos(s->coord.x * M_PI / 180);
-		fprintf(stderr, "scale is %f\n", scale);
-	}
-
 	dx = s->coord.x - t->coord.x;
-	dy = (s->coord.y - t->coord.y) * scale;
+	dy = s->coord.y - t->coord.y;
 	dist = sqrt(dx * dx + dy * dy);
 
 	//printf("%f,%f -> %f,%f plane = %f\n", lat1,lon1, lat2,lon2, dist);
