@@ -3,6 +3,7 @@
 #include <string.h>
 #include <limits.h>
 #include <math.h>
+#include <unistd.h>
 
 #define BITS ((1LL << 31) * 8)
 #define BYTES (BITS / 8 + 1)
@@ -31,11 +32,26 @@ int main(int argc, char **argv) {
 	char time[2000];
 	char where[2000];
 	char url[2000];
-	char agent[2000];
+	char agent[2000] = "";
 	double lat, lon;
 	char userloc[2000];
 	char odate[2000] = "";
 	char rest[2000];
+	int use_agent = 0;
+	long long date_lines = 0;
+
+	int i;
+	while ((i = getopt(argc, argv, "u")) != -1) {
+		switch (i) {
+		case 'u':
+			use_agent = 1;
+			break;
+
+		default:
+			fprintf(stderr, "Usage: %s [-u]\n", argv[0]);
+			exit(EXIT_FAILURE);
+		}
+	}
 
 	unsigned char *field = calloc(BYTES, 1);
 
@@ -54,22 +70,35 @@ int main(int argc, char **argv) {
 		int iphone = 0;
 
 		memset(rest, '\0', 2000);
-		if (sscanf(s, "%s %s %s %s %s %s %2000c", user, date, time, where, url, agent, rest) != 7) {
-			fprintf(stderr, "parse error: %s", s);
-			continue;
+		if (use_agent) {
+			if (sscanf(s, "%s %s %s %s %s %s %2000c", user, date, time, where, url, agent, rest) != 7) {
+				fprintf(stderr, "parse error: %s", s);
+				continue;
+			}
+		} else {
+			if (sscanf(s, "%s %s %s %s %2000c", user, date, time, where, rest) != 5) {
+				fprintf(stderr, "parse error: %s", s);
+				continue;
+			}
 		}
 
 		if (strcmp(date, odate) != 0) {
 			strcpy(odate, date);
-			fprintf(stderr, "%s  agent %d, personal %d, stripe %d, global %d, ok %d\n",
-				date, why_agent, why_personal, why_stripe, why_global, why_ok);
+
+			if (date_lines > 50000) {
+				fprintf(stderr, "%s  agent %d, personal %d, stripe %d, global %d, ok %d\n",
+					date, why_agent, why_personal, why_stripe, why_global, why_ok);
+				date_lines = 0;
+			}
 		}
 
-		if (strncmp(agent, "source:Twitter_for_", 19) != 0 &&
-		    strcmp(agent, "source:Instagram") != 0 &&
-		    strcmp(agent, "source:foursquare") != 0) {
-			why_agent++;
-			continue;
+		if (use_agent) {
+			if (strncmp(agent, "source:Twitter_for_", 19) != 0 &&
+			    strcmp(agent, "source:Instagram") != 0 &&
+			    strcmp(agent, "source:foursquare") != 0) {
+				why_agent++;
+				continue;
+			}
 		}
 
 		if (sscanf(where, "%lf,%lf", &lat, &lon) != 2) {
@@ -123,7 +152,7 @@ int main(int argc, char **argv) {
 			continue;
 		}
 
-		long long gloc;
+		long long gloc = 0;
 		if (!iphone) {
 			// Unique for this location
 
@@ -135,7 +164,12 @@ int main(int argc, char **argv) {
 		}
 
 		why_ok++;
-		printf("%s %s %s %s %s %s %s", user, date, time, where, url, agent, rest);
+		if (use_agent) {
+			printf("%s %s %s %s %s %s %s", user, date, time, where, url, agent, rest);
+		} else {
+			printf("%s %s %s %s %s", user, date, time, where, rest);
+		}
+		date_lines++;
 
 		field[uloc / 8] |= 1 << (uloc % 8);
 		if (iphone) {
