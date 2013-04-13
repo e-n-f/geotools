@@ -19,21 +19,31 @@ void scale(int x, int y) {
 void findbest(int x, int y, int e, int *x1, int *y1) {
 	*x1 = -1;
 	*y1 = -1;
-	int e1 = e;
+	double best = 0;
 
 	int xx, yy;
 
 	for (xx = x - 1; xx <= x + 1; xx++) {
 		for (yy = y - 1; yy <= y + 1; yy++) {
 			if (xx >= 0 && yy >= 0 && xx < SIZE && yy < SIZE) {
-				if (elevation[yy * SIZE + xx] < e1 &&
-				    elevation[yy * SIZE + xx] != -32768) {
-					e1 = elevation[yy * SIZE + xx];
+				if (xx == x && yy == y) {
+					continue;
+				}
 
-					// printf("for %d %d (%d) found %d %d (%d)\n", x, y, e, xx, yy, e1);
+				if (elevation[yy * SIZE + xx] != -32768) {
+					int e1 = e - elevation[yy * SIZE + xx];
 
-					*x1 = xx;
-					*y1 = yy;
+					int dx = xx - x;
+					int dy = yy - y;
+					double dist = sqrt(dx * dx + dy * dy);
+
+					double d = e1 / dist;
+
+					if (d > best) {
+						best = d;
+						*x1 = xx;
+						*y1 = yy;
+					}
 				}
 			}
 		}
@@ -57,7 +67,7 @@ int main(int argc, char **argv) {
 
 	qsort(order, SIZE * SIZE, sizeof(int), cmp);
 
-	printf("0 setlinewidth\n");
+	printf(".2 setlinewidth\n");
 
 	int xs[SIZE];
 	int ys[SIZE];
@@ -107,7 +117,13 @@ int main(int argc, char **argv) {
 			for (x1 = x - sqrt(step); x1 <= x + sqrt(step); x1++) {
 				for (y1 = y - sqrt(step); y1 <= y + sqrt(step); y1++) {
 					if (x1 >= 0 && y1 >= 0 && x1 < SIZE && y1 < SIZE) {
-						elevation[y1 * SIZE + x1] = -32768;
+						int dx = x1 - x;
+						int dy = y1 - y;
+						double d = sqrt(dx * dx + dy * dy);
+
+						if (d <= sqrt(step)) {
+							elevation[y1 * SIZE + x1] = -32768;
+						}
 					}
 				}
 			}
