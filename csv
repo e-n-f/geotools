@@ -1,0 +1,29 @@
+sub csv {
+	my $line = $_[0];
+
+	chomp $line;
+	$line =~ s/\015//;
+
+	my @ret = ();
+	my $n = 0;
+	my $quoted = 0;
+
+	while ($line ne "") {
+		if ($line =~ s/^""//) {
+			$ret[$n] .= '"';
+		} elsif ($line =~ s/^"//) {
+			$quoted = !$quoted;
+		} elsif ($line =~ s/^,//) {
+			if ($quoted) {
+				$ret[$n] .= ',';
+			} else {
+				$n++;
+			}
+		} else {
+			$line =~ s/^([^",]*)//;
+			$ret[$n] .= $1;
+		}
+	}
+
+	return @ret;
+}
