@@ -1,0 +1,151 @@
+#!/usr/bin/perl
+
+if ($#ARGV < 0) {
+	die "Must specify bounds\n";
+}
+
+open(IN, "<$ARGV[0]");
+$line = <IN>;
+($minlat, $minlon, $maxlat, $maxlon) = split(/ /, $line);
+close(IN);
+shift @ARGV;
+
+print "0 setlinewidth\n";
+print ".5 .setopacityalpha\n";
+
+sub scale {
+	return sprintf("%.8f %.8f ",
+		($_[1] - $minlon) * 612 / ($maxlon - $minlon),
+		($_[0] - $minlat) * 612 / ($maxlat - $minlat));
+}
+
+$done = 0;
+while (!$done) {
+	$done = 1;
+
+	@lats = ();
+	@lons = ();
+	@speed = ();
+	@dist = ();
+
+	while (<>) {
+		$done = 0;
+		last if /--/;
+
+		($when, $a, $to, $b, $date, $time, $sec, $dist, $speed) = split(/ /);
+
+		next if $a eq $b;
+
+		last if $dist > 5280;
+		last if $sec > 10 * 60;
+
+		if ($#lats < 0) {
+			($lat, $lon) = split(/,/, $a);
+			push @lats, $lat;
+			push @lons, $lon;
+			push @speed, 0;
+			push @dist, 0;
+		}
+
+		($lat, $lon) = split(/,/, $b);
+		push @lats, $lat;
+		push @lons, $lon;
+		push @speed, $speed;
+		push @dist, $dist;
+	}
+
+	for ($k = 0; $k < $#lats; $k++) {
+		$x1 = $lats[$k];
+		$y1 = $lons[$k];
+
+		$x2 = $lats[$k + 1];
+		$y2 = $lons[$k + 1];
+
+		next if ($x1 < $minlat && $x2 < $minlat);
+		next if ($x1 > $maxlat && $x2 > $maxlat);
+
+		next if ($y1 < $minlon && $y2 < $minlon);
+		next if ($y1 > $maxlon && $y2 > $maxlon);
+
+		if ($speed[$k + 1] < 7) {
+			printf("0 setgray ");
+		} elsif ($speed[$k + 1] < 16) {
+			printf(".96 .04 .04 setrgbcolor ");  # red
+		} elsif ($speed[$k + 1] < 43) {
+			printf(".36 .36 1 setrgbcolor ");  # blue
+		} elsif ($speed[$k + 1] < 85) {
+			printf(".18 .93 .14 setrgbcolor ");  # green
+		} else {
+			printf(".95 .53 .08 setrgbcolor "); # orange
+		}
+
+		if ($dist[$k + 1] < 25) {
+			print scale($x1, $y1) . "moveto ";
+			print scale($x2, $y2) . "lineto stroke\n";
+			next;
+		}
+
+		if ($k > 0) {
+			$x0 = $lats[$k - 1];
+			$y0 = $lons[$k - 1];
+		} elsif ($lats[0] == $lats[$#lats] && $lons[0] == $lons[$#lons]) {
+			$x0 = $lats[$#lats - 1];
+			$y0 = $lons[$#lons - 1];
+		} else {
+			$x0 = $lats[$k];
+			$y0 = $lons[$k];
+		}
+
+		if ($k + 2 <= $#lats) {
+			$x3 = $lats[$k + 2];
+			$y3 = $lons[$k + 2];
+		} elsif ($lats[0] == $lats[$#lats] && $lons[0] == $lons[$#lons]) {
+			$x0 = $lats[1];
+			$y0 = $lons[1];
+		} else {
+			$x3 = $lats[$k];
+			$y3 = $lons[$k];
+		}
+
+		# http://www.antigrain.com/research/bezier_interpolation/
+		$xc1 = ($x0 + $x1) / 2.0;
+		$yc1 = ($y0 + $y1) / 2.0;
+		$xc2 = ($x1 + $x2) / 2.0;
+		$yc2 = ($y1 + $y2) / 2.0;
+		$xc3 = ($x2 + $x3) / 2.0;
+		$yc3 = ($y2 + $y3) / 2.0;
+
+		$len1 = sqrt(($x1-$x0) * ($x1-$x0) + ($y1-$y0) * ($y1-$y0));
+		$len2 = sqrt(($x2-$x1) * ($x2-$x1) + ($y2-$y1) * ($y2-$y1));
+		$len3 = sqrt(($x3-$x2) * ($x3-$x2) + ($y3-$y2) * ($y3-$y2));
+
+		if ($len1 + $len2 == 0 || $len2 + $len3 == 0) {
+			print STDERR "??? $x0,$y0 $x1,$y1 $x2,$y2 $x3,$y3\n";
+			next;
+		}
+
+		$k1 = $len1 / ($len1 + $len2);
+		$k2 = $len2 / ($len2 + $len3);
+
+		$xm1 = $xc1 + ($xc2 - $xc1) * $k1;
+		$ym1 = $yc1 + ($yc2 - $yc1) * $k1;
+
+		$xm2 = $xc2 + ($xc3 - $xc2) * $k2;
+		$ym2 = $yc2 + ($yc3 - $yc2) * $k2;
+
+		$smooth_value = .5;
+
+		$ctrl1_x = $xm1 + ($xc2 - $xm1) * $smooth_value + $x1 - $xm1;
+		$ctrl1_y = $ym1 + ($yc2 - $ym1) * $smooth_value + $y1 - $ym1;
+
+		$ctrl2_x = $xm2 + ($xc2 - $xm2) * $smooth_value + $x2 - $xm2;
+		$ctrl2_y = $ym2 + ($yc2 - $ym2) * $smooth_value + $y2 - $ym2;
+
+		print scale($x1, $y1) . "moveto ";
+
+		print scale($ctrl1_x, $ctrl1_y) . " ";
+		print scale($ctrl2_x, $ctrl2_y) . " ";
+
+		print scale($x2, $y2) . "curveto stroke\n";
+	}
+}
