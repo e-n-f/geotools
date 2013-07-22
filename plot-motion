@@ -38,6 +38,7 @@ sub dist {
 }
 
 while (<>) {
+	chomp;
 	($user, $date, $time, $where, $rest) = split(/ /);
 	($year, $month, $day) = split(/-/, $date);
 	($hour, $minute, $second) = split(/:/, $time);
