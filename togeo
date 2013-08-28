@@ -59,9 +59,7 @@ sub handle_start {
 sub handle_char {
 	my ($expat, $string) = @_;
 
-	if ($state ne "") {
-		$text{$state} = $string;
-	}
+	$text{$state} .= $string;
 }
 
 sub handle_end {
@@ -125,8 +123,22 @@ sub handle_end {
 	}
 }
 
-$parser = new XML::Parser(Handlers => { Start => \&handle_start,
-					End   => \&handle_end,
-					Char  => \&handle_char,
-				      });
-$parser->parse(*STDIN);
+if ($#ARGV < 0) {
+	$parser = new XML::Parser(Handlers => { Start => \&handle_start,
+						End   => \&handle_end,
+						Char  => \&handle_char,
+					      });
+
+	$parser->parse(*STDIN);
+} else {
+	for $file (@ARGV) {
+		$oldwhen = 0;
+
+		$parser = new XML::Parser(Handlers => { Start => \&handle_start,
+							End   => \&handle_end,
+							Char  => \&handle_char,
+						      });
+
+		$parser->parsefile($file);
+	}
+}
