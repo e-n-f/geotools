@@ -1,0 +1,155 @@
+#!/usr/bin/perl -w
+
+# http://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect
+sub intersect {
+	my ($p0_x, $p0_y, $p1_x, $p1_y, $p2_x, $p2_y, $p3_x, $p3_y) = @_;
+
+	my ($s1_x, $s1_y, $s2_x, $s2_y);
+	$s1_x = $p1_x - $p0_x;     $s1_y = $p1_y - $p0_y;
+	$s2_x = $p3_x - $p2_x;     $s2_y = $p3_y - $p2_y;
+
+	my ($s, $t);
+
+	my $div = (-$s2_x * $s1_y + $s1_x * $s2_y);
+	if ($div != 0) {
+		$s = (-$s1_y * ($p0_x - $p2_x) + $s1_x * ($p0_y - $p2_y)) / $div;
+	} else {
+		return ();
+	}
+
+	$div = (-$s2_x * $s1_y + $s1_x * $s2_y);
+	if ($div != 0) {
+		$t = ( $s2_x * ($p0_y - $p2_y) - $s2_y * ($p0_x - $p2_x)) / $div;
+	} else {
+		return ();
+	}
+
+	if ($s >= 0 && $s <= 1 && $t >= 0 && $t <= 1) {
+		return ($p0_x + ($t * $s1_x), $p0_y + ($t * $s1_y), $t);
+	}
+
+	return ();
+}
+
+# /*
+#  * http://www.ecse.rpi.edu/~wrf/Research/Short_Notes/pnpoly.html#The C Code
+#  *
+#  * Copyright (c) 1970-2003, Wm. Randolph Franklin
+#  *
+#  * Permission is hereby granted, free of charge, to any person obtaining
+#  * a copy of this software and associated documentation files (the
+#  * "Software"), to deal in the Software without restriction, including
+#  * without limitation the rights to use, copy, modify, merge, publish,
+#  * distribute, sublicense, and/or sell copies of the Software, and to
+#  * permit persons to whom the Software is furnished to do so, subject
+#  * to the following conditions:
+#  *
+#  * Redistributions of source code must retain the above copyright notice,
+#  * this list of conditions and the following disclaimers.
+#  *
+#  * Redistributions in binary form must reproduce the above copyright notice
+#  * in the documentation and/or other materials provided with the distribution.
+#  *
+#  * The name of W. Randolph Franklin may not be used to endorse or promote
+#  * products derived from this Software without specific prior written
+#  * permission.
+#  *
+#  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+#  * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+#  * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+#  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+#  * DEALINGS IN THE SOFTWARE.
+#  *
+#  */
+sub pnpoly {
+	my ($testx, $testy, @poly) = @_;
+	my $nvert = ($#poly + 1) / 2;
+	my $c = 0;
+
+	my ($i, $j);
+	for ($i = 0, $j = $nvert - 1; $i < $nvert; $j = $i++) {
+		if ((($poly[$i * 2 + 1] > $testy) != ($poly[$j * 2 + 1] > $testy)) &&
+		     ($testx < ($poly[$j * 2] - $poly[$i * 2]) * ($testy - $poly[$i * 2 + 1]) / ($poly[$j * 2 + 1] - $poly[$i * 2 + 1]) + $poly[$i * 2])) {
+			# XXX why does ! sometimes return an empty string?
+			$c = !$c + 0;
+		}
+	}
+
+	return $c;
+}
+
+sub clip {
+	my ($x1, $y1, $x2, $y2, @poly) = @_;
+	my @intersect = (0, 1);
+	my @ret = ();
+
+	my $i;
+	my $j = $#poly - 1;
+	for ($i = 0; $i <= $#poly; $j = $i, $i += 2) {
+		my @i = intersect($x1, $y1, $x2, $y2, $poly[$j], $poly[$j + 1], $poly[$i], $poly[$i + 1]);
+
+		if ($#i >= 0) {
+			push @intersect, $i[2];
+		}
+	}
+
+	@intersect = sort {$a <=> $b} (@intersect);
+
+	for ($i = 0; $i < $#intersect; $i++) {
+		my $mx = $x1 + ($x2 - $x1) * ($intersect[$i] + $intersect[$i + 1]) / 2;
+		my $my = $y1 + ($y2 - $y1) * ($intersect[$i] + $intersect[$i + 1]) / 2;
+
+		push @ret, $x1 + ($x2 - $x1) * $intersect[$i];
+		push @ret, $y1 + ($y2 - $y1) * $intersect[$i];
+		push @ret, $x1 + ($x2 - $x1) * $intersect[$i + 1];
+		push @ret, $y1 + ($y2 - $y1) * $intersect[$i + 1];
+		push @ret, pnpoly($mx, $my, @poly);
+	}
+
+	return @ret;
+}
+
+sub test1 {
+	@poly = ( 0,0, 37.7009, -122.5071, 37.7823, -122.5201, 37.8138, -122.4745, 37.8111, -122.3993, 37.7832, -122.3818, 37.7386, -122.3643, 37.7205, -122.3529, 37.7036, -122.3746, 37.7009, -122.5071,
+		  0,0, 37.87445, -122.27447, 37.87723, -122.24967, 37.86747, -122.24838, 37.86564, -122.26975, 37.87445, -122.27447,
+		  0,0, 37.8309, -122.3830, 37.8335, -122.3667, 37.8215, -122.3610, 37.8059, -122.3601, 37.8084, -122.3737, 37.8309, -122.3830,
+		  0,0 );
+
+	while (<>) {
+		($user, $date, $time, $where) = split(/ /);
+		($lat, $lon) = split(/,/, $where);
+
+		print if pnpoly($lat, $lon, @poly);
+	}
+}
+
+sub test2 {
+	($minlat, $minlon, $maxlat, $maxlon) = (37.593196, -122.552376, 37.883470, -122.185345);
+	@poly = ( 0,0, 37.7009, -122.5071, 37.7823, -122.5201, 37.8138, -122.4745, 37.8111, -122.3993, 37.7832, -122.3818, 37.7386, -122.3643, 37.7205, -122.3529, 37.7036, -122.3746, 37.7009, -122.5071,
+		  0,0, 37.87445, -122.27447, 37.87723, -122.24967, 37.86747, -122.24838, 37.86564, -122.26975, 37.87445, -122.27447,
+		  0,0, 37.8309, -122.3830, 37.8335, -122.3667, 37.8215, -122.3610, 37.8059, -122.3601, 37.8084, -122.3737, 37.8309, -122.3830,
+		  0,0 );
+
+	print "0 setlinewidth\n";
+	while (<>) {
+		($when, $a, $to, $b) = split(/ /);
+		($lat1, $lon1) = split(/,/, $a);
+		($lat2, $lon2) = split(/,/, $b);
+
+		my @clip = clip($lat1, $lon1, $lat2, $lon2, @poly);
+
+		for ($i = 0; $i <= $#clip; $i += 5) {
+			printf("%.3f setgray ", $clip[$i + 4] * .75);
+
+			printf("%.6f %.6f moveto %.6f %.6f lineto stroke\n",
+				($clip[$i + 1] - $minlon) * 612 / ($maxlon - $minlon),
+				($clip[$i + 0] - $minlat) * 612 / ($maxlat - $minlat),
+				($clip[$i + 3] - $minlon) * 612 / ($maxlon - $minlon),
+				($clip[$i + 2] - $minlat) * 612 / ($maxlat - $minlat));
+		}
+	}
+}
+
+test2();
