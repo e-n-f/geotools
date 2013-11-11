@@ -83,4 +83,5 @@ int main() {
 	}
 
 	subdivide(points, n, -90000000, -180000000, 90000000, 180000000);
+	return 0;
 }

@@ -90,7 +90,7 @@ int pnpoly(int nvert, float *vertx, float *verty, float testx, float testy)
 void *cmalloc(size_t size) {
 	void *ret = malloc(size);
 	if (ret == NULL) {
-		fprintf(stderr, "Can't allocate %d\n", size);
+		fprintf(stderr, "Can't allocate %d\n", (int) size);
 		exit(EXIT_FAILURE);
 	}
 	return ret;
