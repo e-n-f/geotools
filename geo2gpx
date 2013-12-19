@@ -1,0 +1,57 @@
+#!/usr/bin/perl
+
+print "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\" ?>\n";
+print "<gpx xmlns=\"http://www.topografix.com/GPX/1/1\" creator=\"\" version=\"1.1\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd\">\n";
+
+sub endtrk {
+	($lat, $lon) = split(/,/, $b);
+	($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime($when2);
+	$time = sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ",
+		$year + 1900, $mon + 1, $mday, $hour, $min, $sec);
+
+	print "   <trkpt lat=\"$lat\" lon=\"$lon\">\n";
+	print "    <ele>$e2</ele>\n";
+	print "    <time>$time</time>\n";
+	print "   </trkpt>\n";
+
+	print "  </trkseg>\n";
+	print " </trk>\n";
+	$within = 0;
+}
+
+while (<>) {
+	next if /#/;
+
+	if (/--/) {
+		if ($within) {
+			endtrk();
+		}
+
+		next;
+	}
+
+	($when, $a, $to, $b, $date, $time, $dur, $dist, $speed, $e1, $e2) = split(/ /);
+	$when2 = $when + $dur;
+
+	if (!$within) {
+		print " <trk>\n";
+		print "  <trkseg>\n";
+		$within = 1;
+	}
+
+	($lat, $lon) = split(/,/, $a);
+	($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime($when);
+	$time = sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ",
+		$year + 1900, $mon + 1, $mday, $hour, $min, $sec);
+
+	print "   <trkpt lat=\"$lat\" lon=\"$lon\">\n";
+	print "    <ele>$e1</ele>\n";
+	print "    <time>$time</time>\n";
+	print "   </trkpt>\n";
+}
+
+if ($within) {
+	endtrk();
+}
+
+print "</gpx>\n";
