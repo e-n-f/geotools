@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+
+use POSIX;
+
+$ENV{'TZ'} = "GMT";
+@weekdays = ( "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" );
+
+while (<>) {
+	($user, $date, $time, $where, $rest) = split(/ /, $_, 5);
+	($lat, $lon) = split(/,/, $where);
+
+	($year, $month, $day) = split(/-/, $date);
+	($hour, $minute, $second) = split(/:/, $time);
+
+	$when = POSIX::mktime($second, $minute, $hour, $day, $month - 1, $year - 1900, 0, 0, -1);
+	$off = $lon * 86400 / 360;
+	$when += $off;
+
+	($second, $minute, $hour, $day, $month, $year, $wday, $yday, $isdst) = localtime($when);
+
+	$month += 1;
+	$year += 1900;
+
+	$sign = "+";
+	if ($off < 0) {
+		$sign = "-";
+		$off = -$off;
+	}
+
+	print "$user ";
+	printf("%04d-%02d-%02d-%s %02d:%02d:%02d:%s%02d%02d ",
+		$year, $month, $day, $weekdays[$wday],
+		$hour, $minute, $second,
+		$sign, int($off / 3600), int(($off % 3600) / 60));
+	print "$where $rest";
+}
