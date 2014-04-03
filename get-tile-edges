@@ -1,0 +1,24 @@
+#!/usr/bin/perl
+
+use Math::Trig;
+
+$pi = 4 * atan2(1, 1);
+
+# http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
+sub tile2latlon {
+	my ($x, $y, $zoom) = @_;
+
+        my $n = 1 << $zoom;
+        my $lon = 360.0 * $x / $n - 180.0;
+        my $lat_rad = atan(sinh($pi * (1 - 2.0 * $y / $n)));
+	my $lat = $lat_rad * 180 / $pi;
+
+	return ($lat, $lon);
+}
+
+($z, $x, $y) = @ARGV;
+
+($lat1, $lon1) = tile2latlon($x, $y, $z);
+($lat2, $lon2) = tile2latlon($x + 1, $y + 1, $z);
+
+print "$lat2,$lon1 $lat1,$lon2\n";
