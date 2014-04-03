@@ -1,0 +1,80 @@
+#!/usr/bin/perl
+
+use Math::Trig;
+
+$pi = 4 * atan2(1, 1);
+
+$minlat = 360;
+$minlon = 360;
+
+$maxlat = -360;
+$maxlon = -360;
+
+# http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
+sub latlon2tile {
+	my ($lat, $lon, $zoom) = @_;
+
+        my $lat_rad = $lat * $pi / 180;
+        my $n = 1 << $zoom;
+
+        my $x = $n * (($lon + 180) / 360);
+        my $y = $n * (1 - (log(tan($lat_rad) + 1/cos($lat_rad)) / $pi)) / 2;
+
+	return ($x, $y);
+}
+
+# http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
+sub tile2latlon {
+	my ($x, $y, $zoom) = @_;
+
+        my $n = 1 << $zoom;
+        my $lon = 360.0 * $x / $n - 180.0;
+        my $lat_rad = atan(sinh($pi * (1 - 2.0 * $y / $n)));
+	my $lat = $lat_rad * 180 / $pi;
+
+	return ($lat, $lon);
+}
+
+for ($i = 0; $i <= $#ARGV; $i += 2) {
+	if ($ARGV[$i + 1] < $minlon) {
+		$minlon = $ARGV[$i + 1];
+	}
+	if ($ARGV[$i + 1] > $maxlon) {
+		$maxlon = $ARGV[$i + 1];
+	}
+
+	if ($ARGV[$i] < $minlat) {
+		$minlat = $ARGV[$i];
+	}
+	if ($ARGV[$i] > $maxlat) {
+		$maxlat = $ARGV[$i];
+	}
+
+	$ARGV[$i] =~ s/,//g;
+	$ARGV[$i + 1] =~ s/,//g;
+
+	$pts .= "$ARGV[$i],$ARGV[$i + 1] ";
+}
+
+($x1, $y1) = latlon2tile($minlat, $minlon, 31);
+($x2, $y2) = latlon2tile($maxlat, $maxlon, 31);
+
+$midx = ($x1 + $x2) / 2;
+$midy = ($y1 + $y2) / 2;
+
+$xd = abs($x2 - $x1);
+$yd = abs($y2 - $y1);
+
+if ($xd > $yd) {
+	$d = $xd / 2;
+} else {
+	$d = $yd / 2;
+}
+
+($lat, $lon) = tile2latlon($midx, $midy, 31);
+($lat1, $lon1) = tile2latlon($midx - $d, $midy + $d, 31);
+($lat2, $lon2) = tile2latlon($midx + $d, $midy - $d, 31);
+
+printf("%.6f %.6f %.6f %.6f\n", $lat1, $lon1, $lat2, $lon2);
+print "$lat $lon\n";
+print "$pts\n";
