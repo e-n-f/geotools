@@ -1,0 +1,51 @@
+#!/usr/bin/perl
+
+use Math::Trig;
+
+$pi = 4 * atan2(1, 1);
+
+# http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
+sub latlon2tile {
+	my ($lat, $lon, $zoom) = @_;
+
+        my $lat_rad = $lat * $pi / 180;
+        my $n = 1 << $zoom;
+
+        my $x = $n * (($lon + 180) / 360);
+        my $y = $n * (1 - (log(tan($lat_rad) + 1/cos($lat_rad)) / $pi)) / 2;
+
+	return ($x, $y);
+}
+
+# http://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
+sub tile2latlon {
+	my ($x, $y, $zoom) = @_;
+
+        my $n = 1 << $zoom;
+        my $lon = 360.0 * $x / $n - 180.0;
+        my $lat_rad = atan(sinh($pi * (1 - 2.0 * $y / $n)));
+	my $lat = $lat_rad * 180 / $pi;
+
+	return ($lat, $lon);
+}
+
+if ($#ARGV != 4) {
+	print STDERR "Usage: $0 lat lon zoom width height\n";
+	exit(1);
+}
+
+($lat, $lon, $zoom, $width, $height) = @ARGV;
+
+($x, $y) = latlon2tile($lat, $lon, $zoom + 8);
+
+$x1 = int($x) - ($width / 2);
+$x2 = int($x) + ($width / 2);
+
+$y1 = int($y) - ($height / 2);
+$y2 = int($y) + ($height / 2);
+
+($lat1, $lon1) = tile2latlon($x1, $y2, $zoom + 8);
+($lat2, $lon2) = tile2latlon($x2, $y1, $zoom + 8);
+
+printf("%.10f %.10f %.10f %.10f\n", $lat1, $lon1, $lat2, $lon2);
+print "(center $lat $lon, zoom $zoom, $width x $height)\n";
