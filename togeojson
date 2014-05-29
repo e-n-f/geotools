@@ -1,0 +1,79 @@
+#!/usr/bin/perl
+
+use POSIX;
+use XML::Parser;
+
+print "{\n\"type\": \"FeatureCollection\",\n\"features\": [\n";
+$within = 0;
+
+sub handle_start {
+	my ($expat, $element, @tags) = @_;
+	my %tags = @tags;
+
+	if ($element eq "trkpt") {
+		$lat = $tags{'lat'};
+		$lon = $tags{'lon'};
+	} elsif ($element eq "ele") {
+		$state = "ele";
+	} elsif ($element eq "time") {
+		$state = "time";
+	} else {
+		$state = "";
+	}
+}
+
+sub handle_char {
+}
+
+sub handle_end {
+	my ($expat, $element) = @_;
+
+	if ($element eq "trkseg" || $element eq "trk") {
+		if ($within > 0) {
+			$within = -1;
+			print " ] } }\n";
+		}
+	} elsif ($element eq "trkpt") {
+		if ($lat ne "" && $lon ne "") {
+			if ($within < 0) {
+				print ",\n";
+			}
+			if ($within <= 0) {
+				print "{ \"type\": \"Feature\", \"properties\": { }, \"geometry\": { \"type\": \"LineString\", \"coordinates\": [ ";
+			} else {
+				print ", ";
+			}
+
+			print "[ $lon, $lat ]";
+			$within = 1;
+		}
+	}
+}
+
+if ($#ARGV < 0) {
+	$parser = new XML::Parser(Handlers => { Start => \&handle_start,
+						End   => \&handle_end,
+						Char  => \&handle_char,
+					      });
+
+	$parser->parse(*STDIN);
+} else {
+	for $file (@ARGV) {
+		$oldwhen = 0;
+		print STDERR "$file\n";
+
+		$parser = new XML::Parser(Handlers => { Start => \&handle_start,
+							End   => \&handle_end,
+							Char  => \&handle_char,
+						      });
+
+		$parser->parsefile($file);
+	}
+}
+
+if ($within > 0) {
+	print "] } }\n";
+}
+
+print "]\n";
+print "}\n";
