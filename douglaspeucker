@@ -1,0 +1,191 @@
+#!/usr/bin/perl -w
+
+# Adapted from
+# https://github.com/DennisOSRM/Project-OSRM/blob/733d1384a40f/Algorithms/DouglasePeucker.cpp
+
+# Copyright (c) 2013, Project OSRM, Dennis Luxen, others
+# All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+# 
+# Redistributions of source code must retain the above copyright notice, this list
+# of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice, this
+# list of conditions and the following disclaimer in the documentation and/or
+# other materials provided with the distribution.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+$zoom = 14;
+if ($#ARGV >= 0) {
+    if ($ARGV[0] eq "-z") {
+        $zoom = $ARGV[1];
+        shift @ARGV;
+        shift @ARGV;
+    } elsif ($ARGV[0] =~ /-z(.+)/) {
+        $zoom = $1;
+        shift @ARGV;
+    }
+}
+
+# These thresholds are more or less heuristically chosen.
+@DouglasPeuckerThresholds = (
+    32000000., # z0
+    16240000., # z1
+     8240000., # z2
+     4240000., # z3
+     2000000., # z4
+     1000000., # z5
+      500000., # z6
+      240000., # z7
+      120000., # z8
+       60000., # z9
+       30000., # z10
+       19000., # z11
+        5000., # z12
+        2000., # z13
+         200., # z14
+          16., # z15
+           6., # z16
+           3., # z17
+           3.  # z18
+);
+
+# This distance computation does integer arithmetic only and is about twice as
+# fast as the other distance function. It is an approximation only, but works
+# more or less ok.
+sub fastDistance {
+    my ($point_lat, $point_lon, $segA_lat, $segA_lon, $segB_lat, $segB_lon) = @_;
+
+    my $p2x = ($segB_lon - $segA_lon);
+    my $p2y = ($segB_lat - $segA_lat);
+    my $something = $p2x*$p2x + $p2y*$p2y;
+    my $u = ( 0 == $something  ? 0 : (($point_lon - $segA_lon) * $p2x + ($point_lat - $segA_lat) * $p2y) / $something);
+
+    if ($u > 1) {
+        $u = 1;
+    } elsif ($u < 0) {
+        $u = 0;
+    }
+
+    my $x = $segA_lon + $u * $p2x;
+    my $y = $segA_lat + $u * $p2y;
+
+    my $dx = $x - $point_lon;
+    my $dy = $y - $point_lat;
+
+    my $dist = ($dx*$dx + $dy*$dy);
+
+    return $dist;
+}
+
+sub douglasPeucker {
+    my ($zoom_level, @input_geometry) = @_;
+    my @recursion_stack = ();
+
+    {
+        my $left_border = 0;
+        my $right_border = 1;
+        # Sweep linerarily over array and identify those ranges that need to be checked
+        do {
+            if($input_geometry[$right_border]{'necessary'}) {
+                push @recursion_stack, $left_border;
+                push @recursion_stack, $right_border;
+                $left_border = $right_border;
+            }
+            ++$right_border;
+        } while( $right_border < $#input_geometry + 1);
+    }
+    while ($#recursion_stack >= 0) {
+        # pop next element
+        my $second = pop @recursion_stack;
+        my $first = pop @recursion_stack;
+
+        $max_distance = -1;
+
+        my $farthest_element_index = $second;
+        # find index idx of element with max_distance
+        my $i;
+        for($i = $first+1; $i < $second; ++$i){
+
+            my $temp_dist = fastDistance(
+                                    $input_geometry[$i]{'lat'},
+                                    $input_geometry[$i]{'lon'},
+                                    $input_geometry[$first]{'lat'},
+                                    $input_geometry[$first]{'lon'},
+                                    $input_geometry[$second]{'lat'},
+                                    $input_geometry[$second]{'lon'},
+                                );
+            my $distance = abs($temp_dist);
+            if(
+                $distance > $DouglasPeuckerThresholds[$zoom_level] &&
+                $distance > $max_distance
+            ) {
+                $farthest_element_index = $i;
+                $max_distance = $distance;
+            }
+        }
+        if ($max_distance > $DouglasPeuckerThresholds[$zoom_level]) {
+            # mark idx as necessary
+            $input_geometry[$farthest_element_index]{'necessary'} = 1;
+            if (1 < ($farthest_element_index - $first) ) {
+                push @recursion_stack, $first;
+                push @recursion_stack, $farthest_element_index;
+            }
+            if (1 < ($second - $farthest_element_index) ) {
+                push @recursion_stack, $farthest_element_index;
+                push @recursion_stack, $second;
+            }
+        }
+    }
+}
+
+while (<>) {
+    unless (/polyline/) {
+        print;
+        next;
+    }
+
+    chomp;
+    s/(.*polyline *)//;
+    print "$1";
+
+    @points = split(/ /, $_);
+    @v = ();
+
+    for ($p = 0; $p <= $#points; $p++) {
+        ($v[$p]{'lon'}, $v[$p]{'lat'}) = split(/,/, $points[$p]);
+        $v[$p]{'lat'} *= 1000000;
+        $v[$p]{'lon'} *= 1000000;
+        $v[$p]{'necessary'} = 0;
+    }
+
+    $v[0]{'necessary'} = 1;
+    $v[$#p]{'necessary'} = 1;
+
+    douglasPeucker($zoom, @v);
+
+    @a = ();
+    @o = ();
+
+    for ($p = 0; $p <= $#points; $p++) {
+        if ($v[$p]{'necessary'}) {
+            push @a, $v[$p]{'lat'} / 1000000;
+            push @o, $v[$p]{'lon'} / 1000000;
+        }
+    }
+
+    for ($i = 0; $i <= $#a; $i++) {
+        printf("%.6f,%.6f%s", $o[$i], $a[$i], $i == $#a ? "\n" : " ");
+    }
+}
