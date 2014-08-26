@@ -151,18 +151,16 @@ sub douglasPeucker {
 }
 
 while (<>) {
-    unless (/polyline/) {
-        print;
-        next;
+    chomp;
+
+    @points = ();
+    while (s/^([0-9.-]+,[0-9.-]+ *)//) {
+	push @points, $1;
     }
 
-    chomp;
-    s/(.*polyline *)//;
-    print "$1";
+    $rest = $_;
 
-    @points = split(/ /, $_);
     @v = ();
-
     for ($p = 0; $p <= $#points; $p++) {
         ($v[$p]{'lon'}, $v[$p]{'lat'}) = split(/,/, $points[$p]);
         $v[$p]{'lat'} *= 1000000;
@@ -186,6 +184,8 @@ while (<>) {
     }
 
     for ($i = 0; $i <= $#a; $i++) {
-        printf("%.6f,%.6f%s", $o[$i], $a[$i], $i == $#a ? "\n" : " ");
+        printf("%.6f,%.6f ", $o[$i], $a[$i]);
     }
+
+    print "$rest\n";
 }
