@@ -1,0 +1,16 @@
+#!/usr/bin/perl -w
+
+while (<>) {
+	chomp;
+
+	@points = ();
+	while (s/^([0-9.-]+,[0-9.-]+ *)//) {
+		push @points, $1;
+	}
+
+	$rest = $_;
+
+	for ($i = 0; $i < $#points; $i++) {
+		print "$points[$i]$points[$i + 1]$rest\n";
+	}
+}
