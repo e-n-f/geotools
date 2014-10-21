@@ -1,0 +1,44 @@
+#!/usr/bin/perl
+
+# Assumes Natural Earth input for "brk_a3" field,
+# as converted to GeoJSON by ogr2ogr
+
+# http://wiki.openstreetmap.org/wiki/Osmosis/Polygon_Filter_File_Format
+
+mkdir("polygons");
+
+while (<>) {
+	$name = "xxx";
+
+	if (/"brk_a3": "([^"]*)"/) {
+		$name = $1;
+		print "$name\n";
+		open(OUT, ">polygons/$name");
+
+		$n = 1;
+		print OUT "$n\n";
+
+		s/.*"coordinates": (\[ )*//;
+
+		while (s/^([0-9.-]+), *([0-9.-]+) *//) {
+			printf OUT ("  %e %e\n", $1, $2);
+
+			if (s/^], *\[ *//) {
+				# another
+			} elsif (s/^] ] ], \[ \[ \[ //) {
+				# new outer ring
+				print OUT "END\n";
+				$n++;
+				print OUT "$n\n";
+			} elsif (s/^] ], \[ \[ //) {
+				# new inner ring
+				print OUT "END\n";
+				$n++;
+				print OUT "!$n\n";
+			}
+		}
+
+		print OUT "END\n";
+		print OUT "END\n";
+	}
+}
