@@ -1,0 +1,61 @@
+#!/usr/bin/perl
+
+use strict;
+
+print "{\n";
+print "\"type\": \"FeatureCollection\",\n";
+print "\"features\": [";
+
+my $first = 1;
+
+while (<>) {
+	my @lats = ();
+	my @lons = ();
+	my $meta = "";
+
+	while (s/^([0-9.-]+),([0-9.-]+) *//) {
+		push @lats, $1;
+		push @lons, $2;
+	}
+
+	if (/^[0-9]*:([0-9]+)/) {
+		$meta = $1;
+	}
+
+	if ($#lats >= 0) {
+		if ($first != 1) {
+			print ",\n";
+		}
+		$first = 0;
+
+		print "{ \"type\": \"Feature\", \"properties\": { ";
+
+		if ($meta ne "") {
+			print "\"meta\": $meta ";
+		}
+
+		print "}, \"geometry\": { ";
+
+		if ($#lats >= 1) {
+			print "\"type\": \"LineString\", \"coordinates\": [ ";
+		} else {
+			print "\"type\": \"Point\", \"coordinates\": ";
+		}
+
+		for (my $i = 0; $i <= $#lats; $i++) {
+			if ($i > 0) {
+				print ", ";
+			}
+
+			print "[ $lons[$i],$lats[$i] ]";
+		}
+
+		if ($#lats >= 1) {
+			print "] } }\n";
+		} else {
+			print "} }\n";
+		}
+	}
+}
+
+print "] }\n";
