@@ -7,8 +7,12 @@ public class dbfcat {
 	public static void main(String[] arg) {
 		try {
 			for (int i = 0; i < arg.length; i++) {
-				ZipFile zf = new ZipFile(arg[i]);
-				extract(zf);
+				if (arg[i].endsWith(".zip")) {
+					ZipFile zf = new ZipFile(arg[i]);
+					extract(zf);
+				} else {
+					extract(new FileInputStream(arg[i]));
+				}
 			}
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
