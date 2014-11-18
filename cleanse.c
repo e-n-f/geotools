@@ -95,7 +95,11 @@ int main(int argc, char **argv) {
 		if (use_agent) {
 			if (strncmp(agent, "source:Twitter_for_", 19) != 0 &&
 			    strcmp(agent, "source:Instagram") != 0 &&
-			    strcmp(agent, "source:foursquare") != 0) {
+			    strcmp(agent, "source:foursquare") != 0 &&
+			    strcmp(agent, "source:Foursquare") != 0 &&
+			    strcmp(agent, "source:Path") != 0 &&
+			    strcmp(agent, "source:Twitter_Web_Client") != 0
+			) {
 				why_agent++;
 				continue;
 			}
