@@ -7,7 +7,7 @@ while (<>) {
 	chomp;
 
 	@points = ();
-	while (s/^([0-9.-]+,[0-9.-]+ *)//) {
+	while (s/^([0-9.-]+,[0-9.-]+) *//) {
 		push @points, $1;
 	}
 
@@ -16,7 +16,7 @@ while (<>) {
 	if ($rest ne $orest || $points[0] ne $opoints[$#opoints]) {
 		if ($#opoints >= 0) {
 			for ($i = 0; $i <= $#opoints; $i++) {
-				print "$opoints[$i]";
+				print "$opoints[$i] ";
 			}
 			print "$orest\n";
 		}
