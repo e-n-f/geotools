@@ -159,6 +159,7 @@ public class shpcat {
 		ArrayList<String> titles = new ArrayList<String>();
 
 		int[] dbflen = new int[dbcolumns.length / 32];
+		int[] dbftype = new int[dbcolumns.length / 32];
 		for (int i = 0; i < dbflen.length; i++) {
 			int start = i * 32;
 			int end;
@@ -173,6 +174,7 @@ public class shpcat {
 			}
 
 			dbflen[i] = dbcolumns[32 * i + 16] & 0xff;
+			dbftype[i] = dbcolumns[32 * i + 11] & 0xFF;
 		}
 
 		if (!json) {
@@ -220,7 +222,12 @@ public class shpcat {
 
 						jquote(titles.get(i));
 						System.out.print(": ");
-						jquote(s);
+
+						if (dbftype[i] == 'N') {
+							System.out.print(s.trim());
+						} else {
+							jquote(s);
+						}
 					} else {
 						s.replace('|', '!');
 						System.out.print(s + "|");
@@ -402,13 +409,26 @@ public class shpcat {
 		}
 
 		case 23: {
-			StringBuilder sb = new StringBuilder("polylinem ");
+			StringBuilder sb;
+
+			if (json) {
+				sb = new StringBuilder("\"type\": \"MultiLineString\", \"coordinates\": [ ");
+			} else {
+				sb = new StringBuilder("polylinem ");
+			}
 
 			int npart = read32le(content, 36);
 			int npoint = read32le(content, 40);
 			for (int i = 0; i < npart; i++) {
 				int off = read32le(content, 44 + 4 * i);
 				int end;
+
+				if (json) {
+					if (i != 0) {
+						sb.append(", ");
+					}
+					sb.append("[ ");
+				}
 
 				if (i == npart - 1) {
 					end = npoint;
@@ -417,11 +437,30 @@ public class shpcat {
 				}
 
 				for (int j = off; j < end; j++) {
+					if (json) {
+						if (j != 0) {
+							sb.append(", ");
+						}
+						sb.append("[ ");
+					}
+
 					sb.append(toDouble(content, 44 + 4 * npart + 16 * j) + "," +
 						  toDouble(content, 52 + 4 * npart + 16 * j) + " ");
+
+					if (json) {
+						sb.append("] ");
+					}
 				}
 
-				sb.append("; ");
+				if (json) {
+					sb.append("] ");
+				} else {
+					sb.append("; ");
+				}
+			}
+
+			if (json) {
+				sb.append("] ");
 			}
 
 			return sb.toString();
