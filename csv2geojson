@@ -1,0 +1,92 @@
+#!/usr/bin/perl
+
+use strict;
+
+sub csv {
+	my $line = $_[0];
+
+	chomp $line;
+	$line =~ s/\015//;
+
+	my @ret = ();
+	my $n = 0;
+	my $quoted = 0;
+
+	while ($line ne "") {
+		if ($line =~ s/^""//) {
+			$ret[$n] .= '"';
+		} elsif ($line =~ s/^"//) {
+			$quoted = !$quoted;
+		} elsif ($line =~ s/^,//) {
+			if ($quoted) {
+				$ret[$n] .= ',';
+			} else {
+				$n++;
+			}
+		} else {
+			$line =~ s/^([^",]*)//;
+			$ret[$n] .= $1;
+		}
+	}
+
+	return @ret;
+}
+
+sub quote {
+	my $s = @_[0];
+
+	$s =~ s/\\/\\\\/g;
+	$s =~ s/"/\\"/g;
+	return $s;
+}
+
+my $line = <>;
+chomp;
+my @fields = csv($line);
+
+print "{\n";
+print "\"type\": \"FeatureCollection\",\n";
+print "\"features\": [\n";
+
+my $first = 1;
+
+while (<>) {
+	chomp;
+	my @cols = csv($_);
+	my %val = ();
+	for (my $i = 0; $i <= $#cols; $i++) {
+		$val{$fields[$i]} = $cols[$i];
+	}
+
+	{
+		if ($first != 1) {
+			print ",\n";
+		}
+		$first = 0;
+
+		print "{ \"type\": \"Feature\", \"properties\": { ";
+
+		for (my $i = 0; $i <= $#cols; $i++) {
+			if ($i != 0) {
+				print ", ";
+			}
+			print "\"" . quote($fields[$i]) . "\": ";
+
+			if ($cols[$i] =~ /^-?[0-9.]+$/ && !($cols[$i] =~ /\..*\./)) {
+				print "$cols[$i]";
+			} else {
+				print "\"" . quote($cols[$i]) . "\"";
+			}
+		}
+
+		print "}, \"geometry\": { ";
+
+		print "\"type\": \"Point\", \"coordinates\": ";
+
+		print "[ $val{'lng'},$val{'lat'} ]";
+
+		print "} }\n";
+	}
+}
+
+print "] }\n";
