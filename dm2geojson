@@ -4,7 +4,7 @@ use strict;
 
 print "{\n";
 print "\"type\": \"FeatureCollection\",\n";
-print "\"features\": [";
+print "\"features\": [\n";
 
 my $first = 1;
 
@@ -18,7 +18,7 @@ while (<>) {
 		push @lons, $2;
 	}
 
-	if (/^[0-9]*:([0-9]+)/) {
+	if (/^[0-9]*:(-?[0-9.]+)/) {
 		$meta = $1;
 	}
 
