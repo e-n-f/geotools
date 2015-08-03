@@ -24,7 +24,11 @@ struct poly {
 	float ymin;
 	float xmax;
 	float ymax;
+
+	struct poly *next;
 };
+
+struct poly *polies = NULL;
 
 struct polylist {
 	struct poly *poly;
@@ -303,6 +307,8 @@ void process(FILE *f, char *fname) {
 			struct poly *poly = cmalloc(sizeof(struct poly));
 
 			poly->description = strdup(s);
+			poly->next = polies;
+			polies = poly;
 
 			poly->vertx = xs;
 			poly->verty = ys;
@@ -394,6 +400,22 @@ void process(FILE *f, char *fname) {
 
 			float b = atof(cp);
 
+			struct poly *pl;
+			for (pl = polies; pl != NULL; pl = pl->next) {
+				if (a >= pl->xmin && a <= pl->xmax && b >= pl->ymin && b <= pl->ymax) {
+					// printf("maybe: %f %f in %f %f %f %f\n", a, b,
+					//	pl->poly->xmin, pl->poly->ymin, pl->poly->xmax, pl->poly->ymax);
+
+					if (pnpoly(pl->nvert, pl->vertx, pl->verty, a, b)) {
+						printf("%s: %s", pl->description, s);
+						//printf("%f,%f: %s: %s", a, b, pl->description, s);
+					}
+				}
+			}
+
+#if 0
+
+
 			if (a < g_xmin || a > g_xmax) {
 				goto next;
 			}
@@ -427,20 +449,22 @@ void process(FILE *f, char *fname) {
 				struct polylist *pl;
 
 				for (pl = t->list; pl != NULL; pl = pl->next) {
-					if (a >= pl->poly->xmin && a <= pl->poly->xmax && b >= pl->poly->ymin && b <= pl->poly->ymax) {
+					if (1) {
+					// if (a >= pl->poly->xmin && a <= pl->poly->xmax && b >= pl->poly->ymin && b <= pl->poly->ymax) {
 						// printf("maybe: %f %f in %f %f %f %f\n", a, b,
 						//	pl->poly->xmin, pl->poly->ymin, pl->poly->xmax, pl->poly->ymax);
 
 						if (pnpoly(pl->poly->nvert, pl->poly->vertx, pl->poly->verty, a, b)) {
 							printf("%s: %s", pl->poly->description, s);
 							//printf("%f,%f: %s: %s", a, b, pl->poly->description, s);
-							goto next;
 						}
 					}
 				}
 			}
 
 			// printf("%f,%f: null\n", a, b);
+
+#endif
 		}
 
 	next:
