@@ -1,3 +1,5 @@
+#!/usr/bin/perl
+
 sub csv {
 	my $line = $_[0];
 
@@ -26,4 +28,19 @@ sub csv {
 	}
 
 	return @ret;
+}
+
+while (<>) {
+	@fields = csv($_);
+
+	for ($i = 0; $i <= $#fields; $i++) {
+		if ($i != 0) {
+			print ",";
+		}
+
+		$fields[$i] =~ s/,/‚/g;
+		print $fields[$i];
+	}
+
+	print "\n";
 }
