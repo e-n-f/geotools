@@ -438,7 +438,7 @@ public class shpcat {
 
 				for (int j = off; j < end; j++) {
 					if (json) {
-						if (j != 0) {
+						if (j != off) {
 							sb.append(", ");
 						}
 						sb.append("[ ");
