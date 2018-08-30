@@ -5,6 +5,7 @@ use XML::Parser;
 
 print "{\n\"type\": \"FeatureCollection\",\n\"features\": [\n";
 $within = 0;
+%coordinates = ();
 
 sub handle_start {
 	my ($expat, $element, @tags) = @_;
@@ -37,33 +38,43 @@ sub handle_end {
 	my ($expat, $element) = @_;
 
 	if ($element eq "trkseg" || $element eq "trk") {
-		if ($within > 0) {
-			$within = -1;
-			print " ] } }\n";
-		}
-	} elsif ($element eq "trkpt") {
-		if ($lat ne "" && $lon ne "") {
-			if ($within < 0) {
+		if ($#coordinates >= 0) {
+			if ($within) {
 				print ",\n";
 			}
-			if ($within <= 0) {
-				print "{ \"type\": \"Feature\", \"properties\": { }, \"geometry\": { \"type\": \"LineString\", \"coordinates\": [ ";
-			} else {
-				print ", ";
+			$within = 1;
+
+			print "{ \"type\": \"Feature\", \"properties\": { }, \"geometry\": { \"type\": \"LineString\", \"coordinates\": [ ";
+
+			for ($i = 0; $i <= $#coordinates; $i++) {
+				if ($i != 0) {
+					print ", ";
+				}
+				my ($lon, $lat, $ele, $time) = split(/,/, $coordinates[$i]);
+				print "[ $lon, $lat, $ele ]";
 			}
 
-			print "[ $lon, $lat";
-			if ($ele ne "") {
-				$ele =~ s/ *$//;
-				print ", $ele";
+			print "], \"attributes\": [ ";
+
+			for ($i = 0; $i <= $#coordinates; $i++) {
+				if ($i != 0) {
+					print ", ";
+				}
+				my ($lon, $lat, $ele, $time) = split(/,/, $coordinates[$i]);
+				print "{ \"time\": \"$time\" }";
 			}
-			if ($time ne "") {
-				$time =~ s/^ *//;
-				$time =~ s/ *$//;
-				print ", { \"time\": \"$time\" }";
-			}
-			print " ]";
-			$within = 1;
+
+			print "] } }\n";
+		}
+
+		@coordinates = ();
+	} elsif ($element eq "trkpt") {
+		if ($lat ne "" && $lon ne "") {
+			$ele =~ s/[ ,]*$//;
+			$time =~ s/[ ,]*$//;
+			$time =~ s/^[ ,]*//;
+
+			push @coordinates, "$lon,$lat,$ele,$time";
 		}
 
 		$ele = "";
@@ -90,10 +101,6 @@ if ($#ARGV < 0) {
 
 		$parser->parsefile($file);
 	}
-}
-
-if ($within > 0) {
-	print "] } }\n";
 }
 
 print "]\n";
